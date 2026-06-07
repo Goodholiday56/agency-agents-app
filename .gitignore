@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# brew-browser — root .gitignore
+# Agency Agents — root .gitignore
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Rust build artifacts (BIG — multiple GB; never commit)
@@ -27,6 +27,19 @@ src-tauri/gen/
 !.env.example
 *.pem
 *.key
+
+# macOS code-signing / notarization / updater secrets — NEVER commit these.
+# (Notary password + updater private key live in the Keychain; see scripts/release.sh.)
+*.p12
+*.cer
+*.cert
+*.certSigningRequest
+*.mobileprovision
+*.provisionprofile
+# Tauri minisign updater private keys (public key lives in tauri.conf.json).
+*.key.pub.bak
+.tauri/
+src-tauri/.tauri/
 
 # Tool-local state (always regenerable)
 tools/categorize/.venv/
@@ -63,5 +76,6 @@ __pycache__/
 # Logs
 *.log
 
-# Icon previews — regenerable from docs/icon/brew-browser.svg via qlmanage
+# Icon previews — regenerable from the brain-circuit source art.
 docs/icon/preview-*.png
+docs/icon/**/preview-*.png
