@@ -16,6 +16,7 @@
   import GitCompareIcon from "@lucide/svelte/icons/git-compare";
   import ChevronDown from "@lucide/svelte/icons/chevron-down";
   import AlertTriangle from "@lucide/svelte/icons/triangle-alert";
+  import X from "@lucide/svelte/icons/x";
 
   import { onMount } from "svelte";
   import { install } from "$lib/stores/install.svelte";
@@ -248,8 +249,19 @@
           <div class="r-main">
             <span class="r-name">{r.name}</span>
             <span class="r-meta">
-              {install.toolLabel(r.tool)}
-              {#if r.projectPath}· <span class="r-proj" title={r.projectPath}>{r.projectPath.split("/").pop()}</span>{/if}
+              <span class="tool-pill">
+                <span class="tp-label">{install.toolLabel(r.tool)}</span>
+                {#if r.projectPath}<span class="tp-proj" title={r.projectPath}>{r.projectPath.split("/").pop()}</span>{/if}
+                {#if !selectMode}
+                  <button
+                    class="tp-x"
+                    title={`Remove from ${install.toolLabel(r.tool)}`}
+                    aria-label={`Remove ${r.name} from ${install.toolLabel(r.tool)}`}
+                    disabled={busy}
+                    onclick={() => act(() => install.uninstall(r.slug, r.tool, r.projectPath), `Removed ${r.name} from ${install.toolLabel(r.tool)}`)}
+                  ><X size={11} /></button>
+                {/if}
+              </span>
             </span>
           </div>
           <Pill tone={tone(r.state)}>{stateLabel(r)}</Pill>
@@ -284,11 +296,6 @@
               <!-- Track is non-destructive: records provenance, keeps your file. -->
               <button class="act primary" disabled={busy} title="Keep your file as-is — just start tracking it (no changes written)" onclick={() => act(() => install.track(r.slug, r.tool, r.projectPath), `Tracking ${r.name}`)}>
                 <PlusIcon size={14} /><span>Track</span>
-              </button>
-            {/if}
-            {#if r.state !== "foreign"}
-              <button class="act danger" disabled={busy} title="Remove" onclick={() => act(() => install.uninstall(r.slug, r.tool, r.projectPath), `Removed ${r.name}`)}>
-                <TrashIcon size={14} />
               </button>
             {/if}
           </div>
@@ -382,8 +389,25 @@
   .r-emoji { font-size: 20px; line-height: 1; flex: none; }
   .r-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
   .r-name { font-weight: var(--fw-medium); color: var(--color-text-primary); }
-  .r-meta { font-size: var(--text-caption); color: var(--color-text-muted); }
-  .r-proj { color: var(--color-text-secondary); }
+  .r-meta { font-size: var(--text-caption); color: var(--color-text-muted); margin-top: 3px; }
+  .tool-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    height: 19px; padding: 0 7px;
+    border: 1px solid var(--color-border); border-radius: 999px;
+    background: var(--color-surface-sunken); color: var(--color-text-secondary);
+    font-size: var(--text-caption); line-height: 1;
+  }
+  .tp-proj { color: var(--color-text-muted); }
+  .tp-proj::before { content: "· "; }
+  /* The remove ✕ — hidden until the row is hovered (deliberate, low-noise). */
+  .tp-x {
+    display: none; align-items: center; justify-content: center;
+    width: 15px; height: 15px; margin-right: -4px; flex: none;
+    border-radius: 999px; background: transparent; color: var(--color-text-muted); cursor: pointer;
+  }
+  .row:hover .tp-x { display: inline-flex; }
+  .tp-x:hover:not(:disabled) { background: var(--color-danger); color: #fff; }
+  .tp-x:disabled { opacity: 0.4; cursor: default; }
   .r-actions { display: flex; align-items: center; gap: 6px; flex: none; }
   .act {
     display: inline-flex; align-items: center; gap: 5px;
@@ -395,7 +419,6 @@
   .act:hover:not(:disabled) { color: var(--color-text-primary); background: var(--color-surface-raised); }
   .act:disabled { opacity: 0.5; cursor: default; }
   .act.primary { color: var(--color-brand); border-color: var(--color-brand); }
-  .act.danger:hover:not(:disabled) { color: var(--color-danger); border-color: var(--color-danger); }
 
   /* ── Delete confirmation ── */
   .cd-scrim {
