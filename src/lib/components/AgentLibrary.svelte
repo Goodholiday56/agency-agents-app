@@ -143,14 +143,22 @@
     }
   });
 
-  function selectedTargets() {
-    return rows
-      .filter((r) => selected.has(r.dest))
-      .map((r) => ({ slug: r.slug, tool: r.tool, projectPath: r.projectPath }));
+  const selRows = $derived(rows.filter((r) => selected.has(r.dest)));
+  // Which bulk actions actually apply to the current selection.
+  const canBulkUpdate = $derived(selRows.some((r) => r.state !== "current")); // nothing to update if all in sync
+  const canBulkTrack = $derived(selRows.some((r) => r.state === "foreign")); // only untracked foreign files
+
+  function toTarget(r: InstalledAgent) {
+    return { slug: r.slug, tool: r.tool, projectPath: r.projectPath };
   }
 
   async function runBulk(action: "update" | "track" | "uninstall", verb: string) {
-    const targets = selectedTargets();
+    // Only act on rows the action applies to (Update skips in-sync rows; Track
+    // only touches foreign; Delete removes whatever's selected).
+    let picked = selRows;
+    if (action === "update") picked = selRows.filter((r) => r.state !== "current");
+    else if (action === "track") picked = selRows.filter((r) => r.state === "foreign");
+    const targets = picked.map(toTarget);
     if (targets.length === 0) return;
     menuOpen = false;
     bulkBusy = true;
@@ -198,10 +206,10 @@
             </button>
             {#if menuOpen}
               <div class="bulk-menu" role="menu">
-                <button class="bulk-opt" role="menuitem" onclick={() => runBulk("update", "Updated")}>
+                <button class="bulk-opt" role="menuitem" disabled={!canBulkUpdate} title={canBulkUpdate ? "" : "All selected are already in sync"} onclick={() => runBulk("update", "Updated")}>
                   <RefreshIcon size={14} /><span>Update — replace with catalog version</span>
                 </button>
-                <button class="bulk-opt" role="menuitem" onclick={() => runBulk("track", "Tracked")}>
+                <button class="bulk-opt" role="menuitem" disabled={!canBulkTrack} title={canBulkTrack ? "" : "Nothing untracked in the selection"} onclick={() => runBulk("track", "Tracked")}>
                   <PlusIcon size={14} /><span>Track — keep file, start managing</span>
                 </button>
                 <button class="bulk-opt danger" role="menuitem" onclick={() => { menuOpen = false; confirmDelete = true; }}>
@@ -364,7 +372,8 @@
     background: transparent; color: var(--color-text-primary);
     font-size: var(--text-body-sm); text-align: left; cursor: pointer;
   }
-  .bulk-opt:hover { background: var(--color-surface-sunken); }
+  .bulk-opt:hover:not(:disabled) { background: var(--color-surface-sunken); }
+  .bulk-opt:disabled { opacity: 0.4; cursor: default; }
   .bulk-opt.danger { color: var(--color-danger); }
   .bulk-opt.danger:hover { background: color-mix(in srgb, var(--color-danger) 12%, transparent); }
   .ghost-btn {
@@ -392,17 +401,18 @@
   .r-meta { font-size: var(--text-caption); color: var(--color-text-muted); margin-top: 3px; }
   .tool-pill {
     display: inline-flex; align-items: center; gap: 5px;
-    height: 19px; padding: 0 7px;
+    height: 20px; padding: 0 5px 0 9px;
     border: 1px solid var(--color-border); border-radius: 999px;
     background: var(--color-surface-sunken); color: var(--color-text-secondary);
     font-size: var(--text-caption); line-height: 1;
   }
   .tp-proj { color: var(--color-text-muted); }
   .tp-proj::before { content: "· "; }
-  /* The remove ✕ — hidden until the row is hovered (deliberate, low-noise). */
+  /* The remove ✕ — hidden until the row is hovered, and contained inside the
+     pill (no negative margin escaping the rounded edge). */
   .tp-x {
     display: none; align-items: center; justify-content: center;
-    width: 15px; height: 15px; margin-right: -4px; flex: none;
+    width: 14px; height: 14px; flex: none;
     border-radius: 999px; background: transparent; color: var(--color-text-muted); cursor: pointer;
   }
   .row:hover .tp-x { display: inline-flex; }
