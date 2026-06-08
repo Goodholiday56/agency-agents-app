@@ -223,3 +223,40 @@ drop-shadow), title "Agency Agents", tagline "A native macOS app store for AI ag
 shows "agency-agents-app" (dev binary name) while menu bar shows "Agency Agents" (productName) — a
 DEV-ONLY artifact; `tauri build` produces "Agency Agents.app" where both match. Plan persisted to
 phase-roadmap.md (v2 sequence). First git commit made. Next: #1 clone-as-source-of-truth.
+
+2026-06-08 — Install-management loop + grouped Library + signed build + report (lead). Long session;
+many commits (see git log eacbf35..2370ce0). Highlights:
+- CATALOG SOURCE (#1): CatalogSource{bundled|managed|userClone} in state/catalog.json; detect/provision
+  (git clone or tarball)/pull; catalog_status + catalog_check_updates (git behind/ahead + diffstat);
+  first-run picker; Settings→Catalog (git status + GitHub repo stats + sign-in via existing github
+  store). Categories parsed from convert.sh AGENT_DIRS (integrations dropped, strategy added).
+- RECURSIVE INDEXING: build_from_dir + read_source now recurse; real clones nest agents
+  (game-development/godot/<slug>.md etc.). Michael's clone had 19 nested agents the flat scan dropped.
+  Bundled baseline is flat → count unchanged (209). Test added.
+- BYTE-IDENTICAL → CURRENT: installs_reconcile foreign sweep now byte-compares each recognized file vs
+  the canonical render; identical → Current (in sync, no "adopt"), divergent → Foreign. Michael's
+  "these are mine now" — a clean CLI setup stops nagging. (Load-bearing on render parity for non-CC tools.)
+- DIFF VIEWER: agent_diff (already existed) wired to DiffModal + util/diff.ts (dependency-free LCS).
+  Click a divergent pill → unified diff (− on disk / + catalog).
+- UPDATE-FROM-CATALOG on divergent installs (backs up first). The common "pull what the repo has."
+- LIBRARY = GROUPED BY AGENT: one row, a pill per tool. Pills color-coded by state; per-pill ✕ remove,
+  ↻ update, click→diff. "Select" button gates bulk checkboxes (per-agent); "With selected" →
+  Update/Track/Delete (Delete confirms + warns no-undo; inapplicable disabled). install.bulk()=1 reconcile.
+- AppError rename + dead-brew purge (0 warnings); Settings refocused; resizable/persisted panels;
+  window geometry persists on resize; install-into multi-select + remembered selection; app-data-dir
+  bug fixed (was ~/Library/Application Support/brew-browser → com.zerologic.agency-agents-app).
+- SIGNED + NOTARIZED BUILD: scripts/release.sh pulls notary pw + updater key from Keychain.
+  SKIP_UPDATER=1 ./scripts/release.sh → Gatekeeper-accepted notarized+stapled .app + signed .dmg.
+  Notary creds: keychain service "agency-agents-notary" / msitarzewski@mac.com, Team 7JQGQ7CRH8.
+  Updater minisign key NOT set up yet. .gitignore hardened.
+- ICON: new white-glyph-on-purple flat icon shipped; Liquid Glass layered source staged in docs/icon/
+  (AppIcon.icon validates with actool) for Tahoe — not wired to build (Icon Composer is the export path).
+- THE REPORT (Michael asked "did you run a report on the 8?"): replicated the app's compare against the
+  userClone. 184 installed = 157 identical, 8 divergent (repo NEWER — e.g. software-architect +2766b
+  real new sections; a "1-byte" one was a corrupted→fixed emoji, NOT whitespace → all 8 are genuine
+  repo-newer versions → Update is right + frequent), 19 nested-unknown (→ fixed by recursion).
+- ⚠️ RE-ORG COMING (Michael): re-verify catalog layout/categories/counts after it lands.
+- IMMEDIATE NEXT: (1) renderer parity vs convert.sh for transform tools (now load-bearing); (2) decide
+  uninstall-backs-up-first. Then: Dashboard rollup; multi-file renderers (#8); brew tech-debt sweep.
+  Verdict: cargo test 247/0; svelte-check 0 err; build green. Memory bank updated; committing + pushing
+  (created private GitHub repo — no remote existed before).

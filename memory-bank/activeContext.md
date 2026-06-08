@@ -1,14 +1,25 @@
 # Active Context — Agency Agents
 
-**State**: BUILD. Phases 0–3 DONE. Brew swept. Icon + About done. **Adopt→Track safety fix DONE.
-#1 clone-as-source-of-truth (slices 1–4) DONE — not yet run by Michael.**
-**Last updated**: 2026-06-06
+**State**: BUILD. The cross-tool install-management loop WORKS. Signed+notarized build works.
+**⚠️ A RE-ORG IS COMING — re-verify catalog assumptions (see NEXT-SESSION.md).**
+**Last updated**: 2026-06-08
 
-## Just landed (this session)
+## Current state (read NEXT-SESSION.md for the full picture + IMMEDIATE backlog)
+- **Library is grouped by agent** — one row, a pill per tool, each pill color-coded by state with
+  per-pill ✕ (remove) / ↻ (update-from-catalog) / click→Diff. Select mode + bulk Update/Track/Delete.
+- **Byte-identical foreign → `current`** (auto-recognized, no adopt ceremony). **Recursive indexing**
+  finds nested clone agents. `agent_diff` + `DiffModal` show what differs. Adopt→**Track** (safe).
+- Active catalog = **userClone** `/Users/michael/Software/AgentLand/agency-agents` (manage:true).
+- `BrewError`→`AppError`; Settings refocused to Agency Agents; resizable/persisted panels; window
+  geometry persists; install-into multi-select. App-data-dir bug fixed (was brew-browser).
+- **Signed + notarized `.app`/`.dmg`** via `scripts/release.sh` (SKIP_UPDATER=1). 247 Rust tests / 0.
+- 🔴 IMMEDIATE: (1) **renderer parity** for transform tools is now load-bearing + unverified;
+  (2) decide whether **uninstall backs up first** (quick ✕ is currently a hard delete).
+
+## (historical) Earlier this arc
 - **Adopt → Track**: destructive Adopt gone. `track_agent` records provenance, writes nothing; every
-  write backs up first (`<app_data>/backups/`); `agent_diff` for review-before-Update. UI:
-  Foreign→"Track", modified→"Restore", Dashboard "found to track".
-- **#1 slice 1 — categories from tooling**: `discover_categories` parses `AGENT_DIRS` from
+  write backs up first (`<app_data>/backups/`); `agent_diff` for review-before-Update.
+- **categories from tooling**: `discover_categories` parses `AGENT_DIRS` from
   `scripts/convert.sh`. **Data fix: `integrations` (convert.sh output) dropped (210→209); `strategy`
   added.** Removed the orphan `integrations/backend-architect-with-memory.md` from the baseline (it's
   a valid-but-misfiled enrichment example; to ship it for real, promote it UPSTREAM into a real
