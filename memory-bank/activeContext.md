@@ -1,20 +1,27 @@
 # Active Context — Agency Agents
 
-**State**: BUILD. The cross-tool install-management loop WORKS. Signed+notarized build works.
-**⚠️ A RE-ORG IS COMING — re-verify catalog assumptions (see NEXT-SESSION.md).**
-**Last updated**: 2026-06-08
+**State**: BUILD. The cross-tool install-management loop WORKS. IA re-org Phase A DONE. Signed build works.
+**Last updated**: 2026-06-08 (later)
 
 ## Current state (read NEXT-SESSION.md for the full picture + IMMEDIATE backlog)
-- **Library is grouped by agent** — one row, a pill per tool, each pill color-coded by state with
-  per-pill ✕ (remove) / ↻ (update-from-catalog) / click→Diff. Select mode + bulk Update/Track/Delete.
-- **Byte-identical foreign → `current`** (auto-recognized, no adopt ceremony). **Recursive indexing**
-  finds nested clone agents. `agent_diff` + `DiffModal` show what differs. Adopt→**Track** (safe).
+- **UNIFIED Agents workspace (Phase A done).** Agents + Library are ONE three-pane surface
+  (`AgentsWorkspace.svelte`): list pane (filter lens All/Installed/Needs-attention/Untracked + search +
+  Category ▾ + Select-mode bulk) · `ResizeHandle` · persistent detail pane (`PersonaBody` + the
+  `DeploymentMatrix`). `PersonaDiscover.svelte` + `AgentLibrary.svelte` DELETED.
+- **Deployment band under the name/division**: summary pills for installed tools + a "USE WITH ⌄"
+  disclosure. User tools = `Switch` (on=installed); project tools = Install/Add-project + per-project
+  sub-rows. Drift actions (Diff/Track/Update) inline when applicable. New `Switch.svelte` (shared,
+  extracted from Settings→Network), `util/platform.ts` (⌘/Ctrl shortcut glyphs).
+- Nav: `library` section retired everywhere; `ui.agentsFilter` + `ui.openAgents(filter)` deep-link
+  (Dashboard cards + palette use it). Section id stayed `personas`.
+- **Byte-identical foreign → `current`**; **recursive indexing**; `agent_diff` + `DiffModal`; Track (safe).
 - Active catalog = **userClone** `/Users/michael/Software/AgentLand/agency-agents` (manage:true).
-- `BrewError`→`AppError`; Settings refocused to Agency Agents; resizable/persisted panels; window
-  geometry persists; install-into multi-select. App-data-dir bug fixed (was brew-browser).
 - **Signed + notarized `.app`/`.dmg`** via `scripts/release.sh` (SKIP_UPDATER=1). 247 Rust tests / 0.
-- 🔴 IMMEDIATE: (1) **renderer parity** for transform tools is now load-bearing + unverified;
-  (2) decide whether **uninstall backs up first** (quick ✕ is currently a hard delete).
+- 🔵 NEXT: **Phase B** = 4 Dashboard charts (coverage matrix · health donut · category distribution ·
+  per-tool coverage), dependency-free SVG/CSS, cells deep-link into the workspace. Then **Phase C** =
+  Windows/Linux titlebar degradation + "this device" copy + home-path display.
+- 🔴 STILL OPEN: (1) **renderer parity** vs convert.sh for transform tools (load-bearing, unverified);
+  (2) **uninstall backs up first?** (quick ✕ / bulk Delete are hard deletes today).
 
 ## (historical) Earlier this arc
 - **Adopt → Track**: destructive Adopt gone. `track_agent` records provenance, writes nothing; every

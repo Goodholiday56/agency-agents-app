@@ -5,8 +5,7 @@
   import ResizeHandle from "$lib/components/ResizeHandle.svelte";
   import AgencyDashboard from "$lib/components/AgencyDashboard.svelte";
   import Loadouts from "$lib/components/Loadouts.svelte";
-  import PersonaDiscover from "$lib/components/PersonaDiscover.svelte";
-  import AgentLibrary from "$lib/components/AgentLibrary.svelte";
+  import AgentsWorkspace from "$lib/components/AgentsWorkspace.svelte";
   import ToolsView from "$lib/components/ToolsView.svelte";
   import ActivityHistory from "$lib/components/ActivityHistory.svelte";
   import ActivityDrawer from "$lib/components/ActivityDrawer.svelte";
@@ -74,16 +73,15 @@
       return;
     }
 
-    // Cmd+0..6: agency section nav. Matches the sidebar.
-    if (meta && ["0","1","2","3","4","6"].includes(e.key)) {
+    // Cmd+0..4: agency section nav. Matches the sidebar.
+    if (meta && ["0","1","2","3","4"].includes(e.key)) {
       e.preventDefault();
       const map: Record<string, SidebarSection> = {
         "0": "dashboard",
         "1": "personas",
-        "2": "library",
-        "3": "tools",
-        "4": "loadouts",
-        "6": "activity",
+        "2": "tools",
+        "3": "loadouts",
+        "4": "activity",
       };
       ui.setSection(map[e.key]);
       return;
@@ -174,14 +172,12 @@
         <div class="section-pane">
           {#if ui.section === "dashboard"}
             <AgencyDashboard />
-          {:else if ui.section === "library"}
-            <AgentLibrary />
           {:else if ui.section === "tools"}
             <ToolsView />
           {:else if ui.section === "loadouts"}
             <Loadouts />
           {:else if ui.section === "personas"}
-            <PersonaDiscover />
+            <AgentsWorkspace />
           {:else if ui.section === "activity"}
             <ActivityHistory />
           {/if}

@@ -260,3 +260,40 @@ many commits (see git log eacbf35..2370ce0). Highlights:
   uninstall-backs-up-first. Then: Dashboard rollup; multi-file renderers (#8); brew tech-debt sweep.
   Verdict: cargo test 247/0; svelte-check 0 err; build green. Memory bank updated; committing + pushing
   (created private GitHub repo — no remote existed before).
+
+## 2026-06-08 (later) — IA RE-ORG: Agents + Library unified into a three-pane workspace
+Michael: "the 'Library' and 'Agents' views are overlapping … bring the latest methods, charting, UX
+patterns … cross-platform (macOS/Linux/Windows 11) … organize 200+ agents, the tools they're installed
+in, and their purpose/roles." Decided via AskUserQuestion: (1) UNIFY Agents+Library into one view;
+(2) THREE-PANE (mail/IDE) layout; (3) all four Dashboard charts (coverage matrix, health donut, category
+distribution, per-tool coverage). Diagnosis: brew's "installed vs not" binary doesn't fit a 5-state
+cross-tool world, so the same (agent×tool) install rows were rendered twice (PersonaDiscover slide-over
++ AgentLibrary) in two visual languages — and an agent's PURPOSE and its DEPLOYMENT never appeared
+together.
+- **PHASE A DONE (this session).** New `AgentsWorkspace.svelte` = three-pane: list pane (segmented filter
+  lens All/Installed/Needs-attention/Untracked with live counts + search + Category ▾ dropdown +
+  Select-mode bulk Update/Track/Delete, lifted from the old Library) · `ResizeHandle` · persistent
+  resizable detail pane (reuses `detailPaneWidth`). Rows show emoji·name·vibe + compact tool-state dots.
+- Extracted `PersonaBody.svelte` (persona header + markdown, verbatim from PersonaDiscover) — now takes a
+  `deploy` Snippet rendered BETWEEN header and persona text (so deployment sits under the name/division).
+- New `DeploymentMatrix.svelte` (fuses PersonaDiscover's install menu + AgentLibrary's per-pill actions):
+  SUMMARY line of pills for installed tools (state-dotted) + a DISCLOSURE ("USE WITH ⌄", was "Deploy
+  into") of every tool. User tools = a `Switch` (on=installed; off=removed). Project tools (Cursor,
+  opencode) = Install/Add-project + per-project sub-rows (a switch can't represent N projects). Drift
+  actions (Diff/Track/Update) inline only when applicable. Disclosure auto-opens per-agent when nothing's
+  deployed, else closed. Pill label nudged up 2px (`.dm-plabel`).
+- New `Switch.svelte` — extracted from Settings→Network "Offline Mode" toggle; shared primitive.
+- New `util/platform.ts` — `isMac` / `modKey` / `shortcut()`; shortcut glyphs now adapt (⌘ vs Ctrl+).
+- **DELETED** `PersonaDiscover.svelte` + `AgentLibrary.svelte` (net −2 big components, +4 smaller/shared).
+- Nav: retired the `library` section everywhere (Sidebar, +page keymap renumbered 0–4, CommandPalette,
+  types `SidebarSection`, ui `SECTION_TITLES`/`DEFAULT_SECTION_VALUES`, SettingsSectionAppearance). New
+  `ui.agentsFilter` + `ui.openAgents(filter)` deep-link; Dashboard stat cards + palette use it. Agents
+  carries the attention badge now. Section id stayed `personas` (renders the workspace) to limit churn.
+- Verdict: svelte-check 0 err (only the benign `node` tsconfig note); `npm run build` ✓; cargo 247/0
+  (no Rust touched — pure frontend re-org).
+- **REMAINING:** Phase B (4 Dashboard charts, dependency-free SVG/CSS, deep-link cells into the
+  workspace) · Phase C (Windows/Linux titlebar / traffic-light degradation; "this device" copy;
+  home-path display). Plus prior IMMEDIATE: renderer parity vs convert.sh; uninstall-backup decision.
+- **BACKLOG (new, Michael):** a "local-runtime system-prompt" target class — Ollama Modelfile `SYSTEM`
+  / LM Studio preset — as its OWN renderer+runtime track, NOT an entry in the agent-host tool set
+  (those 7+4 ingest a persona file into an agents dir; runtimes serve weights and have no agents dir).

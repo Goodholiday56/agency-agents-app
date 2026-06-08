@@ -33,6 +33,16 @@ registry. **State: the install-management loop is real and working.** Signed + n
   (Claude Code). Report: 157 byte-identical (→ shown `current`), 8 divergent (repo is NEWER → use
   Update), 19 nested (now indexed after the recursion fix).
 
+## ✅ IA RE-ORG — Phase A DONE (2026-06-08); Phase B is the next visible work
+Agents + Library are now ONE three-pane workspace (`AgentsWorkspace.svelte`); `PersonaDiscover.svelte` +
+`AgentLibrary.svelte` are deleted. Detail pane = `PersonaBody` (with a `deploy` snippet) + the
+`DeploymentMatrix` (summary pills + "USE WITH" disclosure; user tools toggle via `Switch.svelte`, project
+tools keep Install/Add-project sub-rows). New `util/platform.ts` adapts ⌘/Ctrl glyphs. Filter lens +
+`ui.openAgents(filter)` deep-links replace the old `library` section. **NEXT: Phase B** — 4 Dashboard
+charts (coverage matrix · health donut · category distribution · per-tool coverage), dependency-free
+SVG/CSS, cells deep-link into the workspace. **Then Phase C** — Windows/Linux titlebar/traffic-light
+degradation, "this device" copy, home-path display (verify `tauri.conf.json` + `TitlebarControls.svelte`).
+
 ## 🔴 IMMEDIATE backlog (address first)
 1. **Renderer parity for transform tools — LOAD-BEARING, not yet verified.** Everything proven so far
    is **Claude Code** (identity tool: file == raw `.md`, so byte-match is certain). But the whole new
@@ -48,7 +58,11 @@ registry. **State: the install-management loop is real and working.** Signed + n
    Delete "no undos" warning). Ask before assuming.
 
 ## Backlog (not immediate)
-- **Dashboard rollup**: surface "N agents behind the repo" / attention at a glance (deep-links exist).
+- **Local-runtime system-prompt target (NEW, Michael 2026-06-08)**: a separate target CLASS for model
+  runtimes — Ollama (`Modelfile` `SYSTEM "…"`) and LM Studio (preset/system prompt) — where an agent is
+  deployed as the model's system prompt, not a per-tool agents/*.md. Needs its OWN renderer + a runtime
+  locator + a reconcile story (no agents dir to scan; track the generated Modelfile/preset). NOT a missing
+  entry in the agent-host `Tool` set — those ingest a persona file; runtimes serve weights. Its own track.
 - **#8 multi-file renderers** (antigravity, openclaw, aider, windsurf) — error cleanly today.
 - `aliases.json` (slug renames), explicit orphan surfacing, `.agency-cache/` convention.
 - **Tech-debt (brew plumbing, invisible)**: dead `Settings` fields (caskIconMode, trendingTtl,
@@ -67,11 +81,13 @@ registry. **State: the install-management loop is real and working.** Signed + n
   (nested clone agents now found; `read_source` resolves nested paths).
 - **Install safety + states**: Adopt→**Track** (records, no write); every write backs up first;
   `agent_diff`; **byte-identical foreign → `current`** (auto-recognized, no "adopt" ceremony).
-- **Library = grouped by agent**: ONE row per agent, a **pill per tool**. Each pill is color-coded by
-  state (current quiet; foreign/outdated/modified/removed stand out) with per-pill actions: click
-  divergent pill → Diff (`DiffModal` + `util/diff.ts` LCS), ↻ → Update-from-catalog (backs up), ✕ →
-  remove. **Select** button reveals checkboxes (per-agent); "With selected" → Update/Track/Delete
-  (Delete confirms, warns no-undo; inapplicable actions disabled). `install.bulk()` = one reconcile.
+- **Unified Agents workspace (replaces Library + the catalog browse)**: `AgentsWorkspace.svelte` three-
+  pane. List pane = filter lens (All/Installed/Needs-attention/Untracked, live counts) + search +
+  Category ▾ + Select-mode bulk (Update/Track/Delete; Delete confirms, warns no-undo; `install.bulk()` =
+  one reconcile). Detail pane = `PersonaBody` + `DeploymentMatrix`. The matrix: summary pills for
+  installed tools (state-dotted) + a "USE WITH" disclosure where user tools toggle via `Switch.svelte`
+  and project tools (Cursor/opencode) keep Install/Add-project + per-project sub-rows; Diff (`DiffModal`
+  + `util/diff.ts`) / Track / Update inline when applicable. `PersonaDiscover` + `AgentLibrary` deleted.
 - **Settings refocused** to Agency Agents (Network/GitHub/About/Appearance/Updates rewritten; dead brew
   toggles removed). **`BrewError`→`AppError`** rename + dead-code purge (0 warnings).
 - **Window/panel persistence**: resizable + persisted sidebar + agent-detail panel; window geometry
@@ -106,7 +122,8 @@ for the exact script — it found 157 identical / 8 divergent / 19 nested-unknow
 - Backend: `src-tauri/src/{corpus,render,install,github,util}/`, `state.rs`, `types.rs`, `error.rs`
   (now `AppError`), `lib.rs`. Tauri: `src-tauri/tauri.conf.json` (id com.zerologic.agency-agents-app,
   port 1430, signingIdentity, updater endpoint placeholder).
-- Frontend: `src/lib/components/{AgentLibrary,DiffModal,PersonaDiscover,CatalogFirstRun,
-  SettingsSectionCatalog,Sidebar,ResizeHandle}.svelte`, `src/lib/stores/{install,catalog,corpus,ui}.svelte.ts`,
-  `src/lib/util/{diff,reportIssue}.ts`, `src/routes/{+page,+layout}.svelte`.
+- Frontend: `src/lib/components/{AgentsWorkspace,PersonaBody,DeploymentMatrix,Switch,DiffModal,
+  CatalogFirstRun,SettingsSectionCatalog,Sidebar,ResizeHandle}.svelte`,
+  `src/lib/stores/{install,catalog,corpus,ui}.svelte.ts`, `src/lib/util/{diff,platform,reportIssue}.ts`,
+  `src/routes/{+page,+layout}.svelte`. (PersonaDiscover + AgentLibrary were deleted in the IA re-org.)
 - Release: `scripts/release.sh`. Icon source: `docs/icon/{AppIcon.icon,layers/,README-liquid-glass.md}`.

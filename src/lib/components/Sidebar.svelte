@@ -1,7 +1,6 @@
 <script lang="ts">
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import Bot from "@lucide/svelte/icons/bot";
-  import Boxes from "@lucide/svelte/icons/boxes";
   import Wrench from "@lucide/svelte/icons/wrench";
   import Archive from "@lucide/svelte/icons/archive";
   import Activity from "@lucide/svelte/icons/activity";
@@ -10,6 +9,7 @@
   import { activity } from "$lib/stores/activity.svelte";
   import { corpus } from "$lib/stores/corpus.svelte";
   import { install } from "$lib/stores/install.svelte";
+  import { shortcut } from "$lib/util/platform";
   import type { SidebarSection } from "$lib/types";
 
   interface NavItem {
@@ -19,18 +19,16 @@
     icon: typeof Bot;
   }
 
-  // Agency-first navigation. The Agents catalog is the home screen. Brew's
-  // sections (Dashboard/Library/Discover/Trending/Snapshots/Services) are
-  // retired from the nav here — their agency replacements (installed Library,
-  // Tools, Loadouts, agency Dashboard) land in Phase 2/3. `activity` is the
-  // generic job-stream drawer, reused for install/convert jobs.
+  // Agency-first navigation. Agents is the home screen and now the UNIFIED
+  // surface — it absorbed the former Library, so install state lives there as a
+  // filter, not a separate section. Shortcut glyphs adapt per platform
+  // (⌘ on macOS, Ctrl elsewhere) since the app ships on macOS/Linux/Windows.
   const nav: NavItem[] = [
-    { id: "dashboard", label: "Dashboard", shortcut: "⌘0", icon: LayoutDashboard },
-    { id: "personas",  label: "Agents",    shortcut: "⌘1", icon: Bot },
-    { id: "library",   label: "Library",   shortcut: "⌘2", icon: Boxes },
-    { id: "tools",     label: "Tools",     shortcut: "⌘3", icon: Wrench },
-    { id: "loadouts",  label: "Loadouts",  shortcut: "⌘4", icon: Archive },
-    { id: "activity",  label: "Activity",  shortcut: "⌘6", icon: Activity },
+    { id: "dashboard", label: "Dashboard", shortcut: shortcut("0"), icon: LayoutDashboard },
+    { id: "personas",  label: "Agents",    shortcut: shortcut("1"), icon: Bot },
+    { id: "tools",     label: "Tools",     shortcut: shortcut("2"), icon: Wrench },
+    { id: "loadouts",  label: "Loadouts",  shortcut: shortcut("3"), icon: Archive },
+    { id: "activity",  label: "Activity",  shortcut: shortcut("4"), icon: Activity },
   ];
 
   function badge(id: SidebarSection): string | null {
@@ -38,7 +36,7 @@
       const r = activity.runningCount;
       return r > 0 ? String(r) : null;
     }
-    if (id === "library") {
+    if (id === "personas") {
       // Surface installs needing attention (outdated/modified/removed/foreign).
       const n = install.installed.filter((i) => i.state !== "current").length;
       return n > 0 ? String(n) : null;

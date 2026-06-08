@@ -3,6 +3,7 @@
   import Search from "@lucide/svelte/icons/search";
 
   import { ui } from "$lib/stores/ui.svelte";
+  import { shortcut } from "$lib/util/platform";
   import type { PaletteItem } from "$lib/types";
 
   let query = $state("");
@@ -19,13 +20,14 @@
   });
 
   const commands: PaletteItem[] = [
-    { kind: "command", id: "dashboard", label: "Open Dashboard", shortcut: "⌘0", section: "Nav", run: () => ui.setSection("dashboard") },
-    { kind: "command", id: "personas",  label: "Open Agents",    shortcut: "⌘1", section: "Nav", run: () => ui.setSection("personas") },
-    { kind: "command", id: "library",   label: "Open Library",   shortcut: "⌘2", section: "Nav", run: () => ui.setSection("library") },
-    { kind: "command", id: "tools",     label: "Open Tools",     shortcut: "⌘3", section: "Nav", run: () => ui.setSection("tools") },
-    { kind: "command", id: "loadouts",  label: "Open Loadouts",  shortcut: "⌘4", section: "Nav", run: () => ui.setSection("loadouts") },
-    { kind: "command", id: "activity",  label: "Open Activity",  shortcut: "⌘6", section: "Nav", run: () => ui.setSection("activity") },
-    { kind: "command", id: "drawer",    label: "Toggle Activity drawer", shortcut: "⌘L", section: "View", run: () => ui.toggleDrawer() },
+    { kind: "command", id: "dashboard", label: "Open Dashboard", shortcut: shortcut("0"), section: "Nav", run: () => ui.setSection("dashboard") },
+    { kind: "command", id: "personas",  label: "Open Agents",    shortcut: shortcut("1"), section: "Nav", run: () => ui.openAgents("all") },
+    { kind: "command", id: "installed", label: "Open Agents — Installed",      section: "Nav", run: () => ui.openAgents("installed") },
+    { kind: "command", id: "attention", label: "Open Agents — Needs attention", section: "Nav", run: () => ui.openAgents("attention") },
+    { kind: "command", id: "tools",     label: "Open Tools",     shortcut: shortcut("2"), section: "Nav", run: () => ui.setSection("tools") },
+    { kind: "command", id: "loadouts",  label: "Open Loadouts",  shortcut: shortcut("3"), section: "Nav", run: () => ui.setSection("loadouts") },
+    { kind: "command", id: "activity",  label: "Open Activity",  shortcut: shortcut("4"), section: "Nav", run: () => ui.setSection("activity") },
+    { kind: "command", id: "drawer",    label: "Toggle Activity drawer", shortcut: shortcut("L"), section: "View", run: () => ui.toggleDrawer() },
   ];
 
   let commandHits = $derived.by(() => {

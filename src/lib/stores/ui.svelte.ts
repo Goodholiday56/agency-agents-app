@@ -3,7 +3,7 @@
  * Uses Svelte 5 runes inside a module-scope class instance.
  */
 
-import type { SettingsSection, SidebarSection, ThemePreference } from "$lib/types";
+import type { AgentsFilter, SettingsSection, SidebarSection, ThemePreference } from "$lib/types";
 
 /** Default width of the package detail pane in pixels — the original fixed width. */
 export const DETAIL_PANE_DEFAULT_WIDTH = 420;
@@ -51,7 +51,6 @@ export type VibrancyMaterial = (typeof VIBRANCY_MATERIALS)[number];
 const DEFAULT_SECTION_VALUES = [
   "dashboard",
   "personas",
-  "library",
   "tools",
   "loadouts",
   "activity",
@@ -78,7 +77,6 @@ export function clampDetailPaneWidth(w: number, windowWidth?: number): number {
     importing the navigation array. */
 const SECTION_TITLES: Record<SidebarSection, string> = {
   dashboard: "Dashboard",
-  library:   "Library",
   personas:  "Agents",
   tools:     "Tools",
   loadouts:  "Loadouts",
@@ -105,6 +103,11 @@ class UiStore {
   /** About modal — native menu "About Agency Agents" + sidebar footer link. */
   aboutOpen: boolean = $state(false);
   theme: ThemePreference = $state("system");
+  /** Active filter lens for the unified Agents workspace. Set by the sidebar
+      Agents entry (resets to "all") and by Dashboard / chart deep-links (e.g.
+      "attention") so navigating in lands on the right slice of the list. */
+  agentsFilter: AgentsFilter = $state("all");
+
   /** the package currently shown in the detail panel; null = panel closed */
   selectedPackage: { name: string; kind: "formula" | "cask" } | null = $state(null);
   /** width of the package detail pane in px; persisted to localStorage */
@@ -145,6 +148,14 @@ class UiStore {
     this.section = s;
     // Navigating to ANY section closes the package detail slide-over.
     this.selectedPackage = null;
+  }
+
+  /** Jump to the unified Agents workspace with a filter preselected. Used by
+      the sidebar (defaults to "all"), the Dashboard stat cards, and the
+      Dashboard charts (coverage matrix / health donut deep-links). */
+  openAgents(filter: AgentsFilter = "all") {
+    this.agentsFilter = filter;
+    this.setSection("personas");
   }
 
   openDrawer() {

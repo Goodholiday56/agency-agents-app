@@ -30,19 +30,19 @@
 
 <section class="dash">
   <div class="stats">
-    <button class="stat" onclick={() => ui.setSection("personas")}>
+    <button class="stat" onclick={() => ui.openAgents("all")}>
       <span class="s-num">{available}</span>
       <span class="s-lbl">agents available</span>
     </button>
-    <button class="stat" onclick={() => ui.setSection("library")}>
+    <button class="stat" onclick={() => ui.openAgents("installed")}>
       <span class="s-num">{managed}</span>
       <span class="s-lbl">installed by you</span>
     </button>
-    <button class="stat" class:warn={attention > 0} onclick={() => ui.setSection("library")}>
+    <button class="stat" class:warn={attention > 0} onclick={() => ui.openAgents("attention")}>
       <span class="s-num">{attention}</span>
       <span class="s-lbl">need attention</span>
     </button>
-    <button class="stat" class:info={foreign > 0} onclick={() => ui.setSection("library")}>
+    <button class="stat" class:info={foreign > 0} onclick={() => ui.openAgents("untracked")}>
       <span class="s-num">{foreign}</span>
       <span class="s-lbl">found to track</span>
     </button>

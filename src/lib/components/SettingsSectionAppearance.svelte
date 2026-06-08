@@ -19,7 +19,6 @@
   const SECTIONS: { value: SidebarSection; label: string }[] = [
     { value: "dashboard", label: "Dashboard" },
     { value: "personas", label: "Agents" },
-    { value: "library", label: "Library" },
     { value: "tools", label: "Tools" },
     { value: "loadouts", label: "Loadouts" },
     { value: "activity", label: "Activity" },
