@@ -550,6 +550,13 @@ export interface ToolInfo {
   installedCount: number;
 }
 
+/** Best-effort detected version for a tool (`<bin> --version`); null when the
+    binary isn't on PATH, the probe timed out, or there's no known command. */
+export interface ToolVersion {
+  tool: Tool;
+  version: string | null;
+}
+
 /**
  * One category for the Discover grid. `slug` is the corpus parent dir
  * (e.g. `"engineering"`); `icon` is a PascalCase Lucide icon name the
@@ -593,12 +600,13 @@ export type SidebarSection =
  * Filter lens for the unified Agents workspace. The catalog browse and the
  * old Library view are one surface now; the install-state split becomes a
  * filter over a single agent list rather than a separate destination.
- *   - `all`        — every agent in the catalog (browse mode).
- *   - `installed`  — agents deployed in at least one tool (any state on disk).
- *   - `attention`  — agents with a drifted install (outdated/modified/removed).
- *   - `untracked`  — agents recognized on disk but not yet tracked (foreign).
+ *   - `all`          — every agent in the catalog (browse mode).
+ *   - `installed`    — agents deployed in at least one tool (any state on disk).
+ *   - `notInstalled` — agents not deployed anywhere (the complement of installed).
+ *   - `attention`    — agents with a drifted install (outdated/modified/removed).
+ *   - `untracked`    — agents recognized on disk but not yet tracked (foreign).
  */
-export type AgentsFilter = "all" | "installed" | "attention" | "untracked";
+export type AgentsFilter = "all" | "installed" | "notInstalled" | "attention" | "untracked";
 
 export type ThemePreference = "light" | "dark" | "system";
 

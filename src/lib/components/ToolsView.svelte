@@ -1,108 +1,495 @@
 <script lang="ts">
   /**
-   * Tools — the AI coding tools Agency Agents can deploy into, whether each is
-   * detected on this machine, its scope (user-global vs project), and how many
-   * agents are currently installed into it (from the ledger).
+   * Tools — the "by tool" axis (the workspace is "by agent"), as a list/detail
+   * two-pane mirroring the Agents workspace. The left pane lists each supported
+   * AI tool (brand accent, detected state, version, health bar); selecting one
+   * opens its console on the right: reveal its agents folder, flip it as a
+   * default install target, and run tool-wide actions — Sync to catalog, Track
+   * all, Remove all — plus per-agent controls.
    */
-  import Pill from "./Pill.svelte";
+  import { onMount } from "svelte";
   import RefreshIcon from "@lucide/svelte/icons/refresh-cw";
+  import FolderOpen from "@lucide/svelte/icons/folder-open";
+  import TrashIcon from "@lucide/svelte/icons/trash-2";
+  import PlusIcon from "@lucide/svelte/icons/plus";
+  import DiffIcon from "@lucide/svelte/icons/file-diff";
+  import XIcon from "@lucide/svelte/icons/x";
+  import AlertTriangle from "@lucide/svelte/icons/triangle-alert";
+  import WrenchIcon from "@lucide/svelte/icons/wrench";
+
+  import Switch from "./Switch.svelte";
+  import Input from "./Input.svelte";
+  import DiffModal from "./DiffModal.svelte";
+  import ResizeHandle from "./ResizeHandle.svelte";
   import { install } from "$lib/stores/install.svelte";
+  import { corpus } from "$lib/stores/corpus.svelte";
   import { toast } from "$lib/stores/toast.svelte";
+  import { toolAccent, toolMark } from "$lib/util/toolBadge";
+  import type { InstalledAgent, InstallState, Tool, ToolInfo } from "$lib/types";
 
-  // Pure reader — tools/installs are loaded globally in +layout; Rescan
-  // re-triggers on user action.
-  const tools = $derived(install.tools);
-  let scanning = $state(false);
-
-  // Re-detect tools AND re-reconcile installs (e.g. after installing agents
-  // outside the app, or installing a new editor). This is the "Tool Update".
-  async function rescan() {
-    scanning = true;
+  // ── List-pane width (resizable, persisted) ──
+  const LW_KEY = "agency-agents:tools-list-width";
+  const LW_MIN = 240;
+  const LW_MAX = 520;
+  let listWidth = $state(300);
+  function clampLW(w: number): number {
+    return Math.min(Math.max(Math.round(w), LW_MIN), LW_MAX);
+  }
+  function setListWidth(w: number): void {
+    listWidth = clampLW(w);
     try {
-      await Promise.all([install.loadTools(), install.reconcile()]);
+      localStorage.setItem(LW_KEY, String(listWidth));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  onMount(() => {
+    corpus.ensureLoaded();
+    void install.loadTools();
+    void install.loadVersions(); // best-effort; spawns `<bin> --version`
+    try {
+      const raw = localStorage.getItem(LW_KEY);
+      if (raw) {
+        const n = Number(raw);
+        if (Number.isFinite(n)) listWidth = clampLW(n);
+      }
+    } catch {
+      /* ignore */
+    }
+  });
+
+  const tools = $derived(install.tools);
+  const detectedCount = $derived(tools.filter((t) => t.detected).length);
+
+  const STATE_COLOR: Record<InstallState, string> = {
+    current: "var(--color-success)",
+    outdated: "var(--color-warning)",
+    modified: "color-mix(in srgb, var(--color-warning) 55%, var(--color-danger))",
+    foreign: "var(--color-brand)",
+    removed: "var(--color-danger)",
+  };
+  const STATE_LABEL: Record<InstallState, string> = {
+    current: "In sync",
+    outdated: "Outdated",
+    modified: "Modified",
+    foreign: "Untracked",
+    removed: "Missing",
+  };
+  const DIFFABLE: InstallState[] = ["foreign", "modified", "outdated"];
+  const ORDER: InstallState[] = ["current", "outdated", "modified", "foreign", "removed"];
+
+  function rowsFor(toolId: Tool): InstalledAgent[] {
+    return install.installed.filter((i) => i.tool === toolId);
+  }
+  function health(toolId: Tool) {
+    const c = { current: 0, outdated: 0, modified: 0, foreign: 0, removed: 0 };
+    for (const r of rowsFor(toolId)) c[r.state]++;
+    const total = c.current + c.outdated + c.modified + c.foreign + c.removed;
+    return { ...c, total };
+  }
+
+  const emojiBySlug = $derived(new Map(corpus.agents.map((a) => [a.slug, a.emoji] as const)));
+  function emoji(slug: string): string {
+    return emojiBySlug.get(slug) ?? "🧩";
+  }
+
+  // ── Selection (master-detail) ──
+  let selectedTool = $state<Tool | null>(null);
+  let autoPicked = false;
+  $effect(() => {
+    if (!autoPicked && tools.length > 0) {
+      autoPicked = true;
+      selectedTool = [...tools].sort((a, b) => b.installedCount - a.installedCount)[0]?.tool ?? null;
+    }
+  });
+  const sel = $derived<ToolInfo | null>(tools.find((t) => t.tool === selectedTool) ?? null);
+  const selRows = $derived(
+    selectedTool
+      ? install.installed.filter((i) => i.tool === selectedTool).slice().sort((a, b) => a.name.localeCompare(b.name))
+      : [],
+  );
+  const selHealth = $derived(selectedTool ? health(selectedTool) : null);
+
+  let agentFilter = $state("");
+  const selVisible = $derived(
+    agentFilter.trim()
+      ? selRows.filter((r) => r.name.toLowerCase().includes(agentFilter.trim().toLowerCase()))
+      : selRows,
+  );
+
+  const selProjects = $derived.by(() => {
+    const m = new Map<string, number>();
+    for (const r of selRows) if (r.projectPath) m.set(r.projectPath, (m.get(r.projectPath) ?? 0) + 1);
+    return [...m.entries()].map(([path, count]) => ({ path, count }));
+  });
+
+  // ── Actions ──
+  let busy = $state(false);
+  let diffTarget = $state<InstalledAgent | null>(null);
+  let confirmRemove = $state(false);
+
+  async function rescan() {
+    busy = true;
+    try {
+      await Promise.all([install.loadTools(), install.reconcile(), install.loadVersions()]);
       toast.success("Rescanned tools", `${install.tools.filter((t) => t.detected).length} detected`);
     } finally {
-      scanning = false;
+      busy = false;
     }
+  }
+
+  function toTarget(i: InstalledAgent) {
+    return { slug: i.slug, tool: i.tool, projectPath: i.projectPath };
+  }
+  const canSync = $derived(selRows.some((r) => r.state !== "current"));
+  const canTrack = $derived(selRows.some((r) => r.state === "foreign"));
+
+  async function runToolBulk(action: "update" | "track" | "uninstall", verb: string) {
+    let picked = selRows;
+    if (action === "update") picked = selRows.filter((r) => r.state !== "current");
+    else if (action === "track") picked = selRows.filter((r) => r.state === "foreign");
+    const targets = picked.map(toTarget);
+    if (targets.length === 0) return;
+    busy = true;
+    try {
+      const { ok, fail } = await install.bulk(action, targets);
+      if (fail === 0) toast.success(`${verb} ${ok} agent${ok === 1 ? "" : "s"}`, sel?.label);
+      else toast.error(`${verb}: ${ok} ok, ${fail} failed`);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function quick(fn: () => Promise<unknown>, ok: string) {
+    try {
+      await fn();
+      toast.success(ok);
+    } catch (e) {
+      toast.error("Action failed", String(e));
+    }
+  }
+  async function reveal(path: string | null | undefined) {
+    if (!path) return;
+    try {
+      await install.revealPath(path);
+    } catch (e) {
+      toast.error("Could not open folder", String(e));
+    }
+  }
+  function homePath(p: string): string {
+    return p.replace(/^.*\/Users\/[^/]+/, "~").replace(/^.*\\Users\\[^\\]+/, "~");
   }
 </script>
 
-<section class="tools">
-  <header class="t-head">
-    <p class="t-sub">{tools.length} supported tools · {tools.filter((t) => t.detected).length} detected here</p>
-    <button class="rescan" disabled={scanning} onclick={rescan} title="Re-detect tools + re-scan installs">
-      <RefreshIcon size={15} /><span>{scanning ? "Scanning…" : "Rescan"}</span>
-    </button>
-  </header>
+<section class="tw">
+  <!-- ── List pane ── -->
+  <div class="list-pane" style="width:{listWidth}px">
+    <header class="lp-head">
+      <span class="lp-sub">{tools.length} tools · {detectedCount} detected</span>
+      <button class="ghost icon" disabled={busy} onclick={rescan} title="Re-detect tools, versions + installs" aria-label="Rescan">
+        <RefreshIcon size={15} />
+      </button>
+    </header>
+    <ul class="tlist">
+      {#each tools as t (t.tool)}
+        {@const h = health(t.tool)}
+        {@const ver = install.versionOf(t.tool)}
+        <li>
+          <button class="trow" class:sel={selectedTool === t.tool} class:dim={!t.detected && h.total === 0} onclick={() => (selectedTool = t.tool)}>
+            <span class="badge" style="--accent:{toolAccent(t.tool)}">{toolMark(t.label)}</span>
+            <span class="trow-id">
+              <span class="trow-top">
+                <span class="trow-name">{t.label}</span>
+                <span class="c-dot" class:on={t.detected} title={t.detected ? "Detected" : "Not detected"}></span>
+              </span>
+              {#if h.total > 0}
+                <span class="hbar" title="{h.total} installed">
+                  {#each ORDER as s (s)}
+                    {#if h[s] > 0}<span class="hseg" style="flex:{h[s]};background:{STATE_COLOR[s]}"></span>{/if}
+                  {/each}
+                </span>
+              {/if}
+              <span class="trow-sub">
+                {h.total > 0 ? `${h.total} agent${h.total === 1 ? "" : "s"}` : "No agents"}{#if ver} · <span class="trow-ver" title={ver}>{ver}</span>{/if}
+              </span>
+            </span>
+          </button>
+        </li>
+      {/each}
+    </ul>
+  </div>
 
-  <div class="grid">
-    {#each tools as t (t.tool)}
-      <div class="card" class:dim={!t.detected}>
-        <div class="c-top">
-          <span class="c-name">{t.label}</span>
-          {#if t.detected}
-            <Pill tone="success">detected</Pill>
-          {:else}
-            <Pill tone="neutral">not found</Pill>
+  <div class="tw-resize">
+    <ResizeHandle
+      width={listWidth}
+      min={LW_MIN}
+      max={LW_MAX}
+      defaultWidth={300}
+      direction="right"
+      label="Resize tool list"
+      onChange={(w) => (listWidth = clampLW(w))}
+      onCommit={setListWidth}
+    />
+  </div>
+
+  <!-- ── Detail pane (console) ── -->
+  <div class="detail-pane">
+    {#if sel}
+      <div class="con">
+        <div class="con-head">
+          <span class="badge lg" style="--accent:{toolAccent(sel.tool)}">{toolMark(sel.label)}</span>
+          <div class="con-id">
+            <h2>{sel.label}</h2>
+            <span class="con-meta">
+              {sel.scope === "user" ? "user-global" : "project-scoped"}
+              {#if install.versionOf(sel.tool)}· {install.versionOf(sel.tool)}{/if}
+              {#if !sel.detected}· <span class="warn">not detected</span>{/if}
+            </span>
+          </div>
+          <label class="def-target" title="Preselect this tool in the agent “Use with” menu">
+            <Switch checked={install.isSelected(sel.tool)} ariaLabel="Default install target" onToggle={() => install.toggleSelected(sel.tool)} />
+            <span>Default target</span>
+          </label>
+          {#if sel.userDest}
+            <button class="ghost" onclick={() => reveal(sel.userDest)} title={sel.userDest}>
+              <FolderOpen size={15} /><span>Reveal</span>
+            </button>
           {/if}
         </div>
-        <div class="c-meta">
-          <span class="scope">{t.scope === "user" ? "user-global" : "project-scoped"}</span>
-        </div>
-        {#if t.userDest}
-          <code class="c-dest" title={t.userDest}>{t.userDest.replace(/^.*\/Users\/[^/]+/, "~")}</code>
+
+        {#if sel.userDest}
+          <code class="con-path" title={sel.userDest}>{homePath(sel.userDest)}</code>
         {/if}
-        <div class="c-foot">
-          <span class="count">{t.installedCount}</span>
-          <span class="count-label">agent{t.installedCount === 1 ? "" : "s"} installed</span>
+
+        {#if selHealth && selHealth.total > 0}
+          <div class="legend">
+            {#each ORDER as s (s)}
+              {#if selHealth[s] > 0}
+                <span class="leg"><span class="dot" style="background:{STATE_COLOR[s]}"></span>{selHealth[s]} {STATE_LABEL[s]}</span>
+              {/if}
+            {/each}
+          </div>
+        {/if}
+
+        <div class="actions">
+          <button class="act" disabled={busy || !canSync} title={canSync ? "Update every drifted agent to the catalog version (backs up yours)" : "Everything here is in sync"} onclick={() => runToolBulk("update", "Synced")}>
+            <RefreshIcon size={14} /> Sync to catalog
+          </button>
+          <button class="act" disabled={busy || !canTrack} title={canTrack ? "Adopt the untracked agents (no files changed)" : "Nothing untracked here"} onclick={() => runToolBulk("track", "Tracked")}>
+            <PlusIcon size={14} /> Track all
+          </button>
+          <button class="act danger" disabled={busy || selRows.length === 0} onclick={() => (confirmRemove = true)}>
+            <TrashIcon size={14} /> Remove all
+          </button>
         </div>
+
+        {#if selProjects.length > 0}
+          <div class="projects">
+            <h3 class="sub">Projects</h3>
+            {#each selProjects as p (p.path)}
+              <div class="proj">
+                <FolderOpen size={14} />
+                <span class="proj-name" title={p.path}>{p.path.split("/").pop()}</span>
+                <span class="proj-count">{p.count}</span>
+                <button class="mini" onclick={() => reveal(p.path)} title="Reveal in file manager"><FolderOpen size={13} /></button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+
+        {#if selRows.length === 0}
+          <p class="empty">No agents deployed in {sel.label} yet. Open an agent and use the <strong>Use with</strong> switch to deploy it here.</p>
+        {:else}
+          <div class="list-head">
+            <h3 class="sub">{selRows.length} agent{selRows.length === 1 ? "" : "s"}</h3>
+            <div class="filter"><Input bind:value={agentFilter} variant="search" placeholder="Filter…" ariaLabel="Filter agents" /></div>
+          </div>
+          <ul class="agents">
+            {#each selVisible as r (r.dest)}
+              {@const isBusy = install.busy === `${r.slug}:${r.tool}`}
+              <li class="agent">
+                <span class="a-emoji" aria-hidden="true">{emoji(r.slug)}</span>
+                <span class="a-dot" style="background:{STATE_COLOR[r.state]}" title={STATE_LABEL[r.state]}></span>
+                <span class="a-name">{r.name}</span>
+                {#if r.projectPath}<span class="a-proj" title={r.projectPath}>{r.projectPath.split("/").pop()}</span>{/if}
+                <span class="a-acts">
+                  {#if DIFFABLE.includes(r.state)}
+                    <button class="mini" title="See what differs" onclick={() => (diffTarget = r)}><DiffIcon size={13} /></button>
+                  {/if}
+                  {#if r.state === "foreign"}
+                    <button class="mini" title="Track" disabled={isBusy} onclick={() => quick(() => install.track(r.slug, r.tool, r.projectPath), `Tracking ${r.name}`)}><PlusIcon size={13} /></button>
+                  {/if}
+                  {#if r.state !== "current"}
+                    <button class="mini" title="Update from catalog" disabled={isBusy} onclick={() => quick(() => install.update(r.slug, r.tool, r.projectPath), `Updated ${r.name}`)}><RefreshIcon size={13} /></button>
+                  {/if}
+                  <button class="mini danger" title="Remove" disabled={isBusy} onclick={() => quick(() => install.uninstall(r.slug, r.tool, r.projectPath), `Removed ${r.name}`)}><XIcon size={13} /></button>
+                </span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       </div>
-    {/each}
+    {:else}
+      <div class="d-empty">
+        <WrenchIcon size={40} />
+        <p>Select a tool to manage the agents deployed in it.</p>
+      </div>
+    {/if}
   </div>
 </section>
 
+{#if diffTarget}
+  <DiffModal slug={diffTarget.slug} tool={diffTarget.tool} projectPath={diffTarget.projectPath} name={diffTarget.name} onClose={() => (diffTarget = null)} />
+{/if}
+
+{#if confirmRemove && sel}
+  <button class="cd-scrim" aria-label="Cancel" onclick={() => (confirmRemove = false)}></button>
+  <div class="cd-box" role="alertdialog" aria-modal="true" aria-label="Confirm remove all">
+    <div class="cd-head"><AlertTriangle size={20} /><h2>Remove all from {sel.label}?</h2></div>
+    <p class="cd-body">This <strong>deletes {selRows.length} agent file{selRows.length === 1 ? "" : "s"} from disk</strong> — including any installed outside this app. <strong>There is no undo.</strong></p>
+    <div class="cd-actions">
+      <button class="cd-cancel" onclick={() => (confirmRemove = false)}>Cancel</button>
+      <button class="cd-delete" disabled={busy} onclick={() => { confirmRemove = false; runToolBulk("uninstall", "Removed"); }}>
+        <TrashIcon size={14} /> Remove {selRows.length}
+      </button>
+    </div>
+  </div>
+{/if}
+
 <style>
-  .tools { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-  .t-head {
-    flex: none; padding: var(--space-4); border-bottom: 1px solid var(--color-border);
-    display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  .tw { display: flex; height: 100%; min-height: 0; }
+
+  /* ── List pane ── */
+  .list-pane { flex: none; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  .lp-head {
+    flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
   }
-  .t-sub { color: var(--color-text-secondary); font-size: var(--text-body-sm); }
-  .rescan {
+  .lp-sub { font-size: var(--text-body-sm); color: var(--color-text-secondary); }
+  .ghost {
     display: inline-flex; align-items: center; gap: 6px;
     height: 30px; padding: 0 var(--space-3);
     border: 1px solid var(--color-border); border-radius: var(--radius-md);
     background: transparent; color: var(--color-text-secondary);
-    font-size: var(--text-body-sm); cursor: pointer;
+    font-size: var(--text-body-sm); cursor: pointer; flex: none;
   }
-  .rescan:hover:not(:disabled) { color: var(--color-text-primary); background: var(--color-surface-sunken); }
-  .rescan:disabled { opacity: 0.6; cursor: default; }
-  .grid {
-    overflow-y: auto;
-    padding: var(--space-4);
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: var(--space-3);
+  .ghost:hover:not(:disabled) { color: var(--color-text-primary); background: var(--color-surface-sunken); }
+  .ghost:disabled { opacity: 0.6; cursor: default; }
+  .ghost.icon { padding: 0; width: 30px; justify-content: center; }
+
+  .tlist { flex: 1; overflow-y: auto; min-height: 0; padding: var(--space-2); display: flex; flex-direction: column; gap: 2px; }
+  .trow {
+    display: flex; align-items: center; gap: var(--space-2); width: 100%;
+    padding: var(--space-2); border-radius: var(--radius-md);
+    background: transparent; cursor: pointer; text-align: left;
   }
-  .card {
-    display: flex; flex-direction: column; gap: var(--space-2);
-    padding: var(--space-3);
-    border: 1px solid var(--color-border); border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
+  .trow:hover { background: var(--color-surface-sunken); }
+  .trow.sel { background: var(--color-brand-subtle); }
+  .trow.dim { opacity: 0.55; }
+  .trow-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .trow-top { display: flex; align-items: center; gap: var(--space-2); }
+  .trow-name { flex: 1; min-width: 0; font-weight: var(--fw-medium); color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .c-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--color-text-muted); opacity: 0.4; flex: none; }
+  .c-dot.on { background: var(--color-success); opacity: 1; }
+  .trow-sub { font-size: var(--text-caption); color: var(--color-text-muted); display: flex; gap: 4px; min-width: 0; }
+  .trow-ver { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hbar { display: flex; height: 5px; border-radius: 999px; overflow: hidden; background: var(--color-surface-sunken); }
+  .hseg { display: block; }
+
+  /* ── badges ── */
+  .badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; flex: none; border-radius: 9px;
+    background: linear-gradient(145deg, var(--accent), color-mix(in srgb, var(--accent) 70%, black));
+    color: #fff; font-weight: var(--fw-bold); font-size: 15px;
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 25%, transparent);
   }
-  .card.dim { opacity: 0.6; }
-  .c-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-  .c-name { font-weight: var(--fw-semibold); color: var(--color-text-primary); }
-  .c-meta { font-size: var(--text-caption); color: var(--color-text-muted); }
-  .c-dest {
-    font-family: var(--font-mono, monospace);
-    font-size: var(--text-caption);
-    color: var(--color-text-secondary);
-    background: var(--color-surface-sunken);
-    padding: 2px 6px; border-radius: var(--radius-sm);
+  .badge.lg { width: 44px; height: 44px; border-radius: 12px; font-size: 20px; }
+
+  /* ── resize ── */
+  .tw-resize { display: flex; flex: none; }
+
+  /* ── Detail pane (console) ── */
+  .detail-pane { flex: 1; min-width: 0; overflow-y: auto; border-left: 1px solid var(--color-border); }
+  .con { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+  .con-head { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .con-id { flex: 1; min-width: 0; }
+  .con-id h2 { font-size: var(--text-h2); font-weight: var(--fw-semibold); color: var(--color-text-primary); }
+  .con-meta { font-size: var(--text-caption); color: var(--color-text-muted); }
+  .con-meta .warn { color: var(--color-warning); }
+  .def-target { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-body-sm); color: var(--color-text-secondary); cursor: pointer; }
+  .con-path {
+    font-family: var(--font-mono, monospace); font-size: var(--text-caption);
+    color: var(--color-text-secondary); background: var(--color-surface-sunken);
+    padding: 3px 8px; border-radius: var(--radius-sm); width: max-content; max-width: 100%;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .c-foot { display: flex; align-items: baseline; gap: 6px; margin-top: auto; padding-top: var(--space-2); }
-  .count { font-size: var(--text-h3, 20px); font-weight: var(--fw-bold); color: var(--color-text-primary); }
-  .count-label { font-size: var(--text-caption); color: var(--color-text-muted); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+  .leg { display: inline-flex; align-items: center; gap: 5px; font-size: var(--text-caption); color: var(--color-text-secondary); }
+  .leg .dot, .a-dot { width: 8px; height: 8px; border-radius: 999px; flex: none; }
+
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .act {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 32px; padding: 0 var(--space-3); border-radius: var(--radius-md);
+    border: 1px solid var(--color-border); background: var(--color-surface-sunken);
+    color: var(--color-text-primary); font-size: var(--text-body-sm); cursor: pointer;
+  }
+  .act:hover:not(:disabled) { border-color: var(--color-brand); }
+  .act:disabled { opacity: 0.45; cursor: default; }
+  .act.danger { color: var(--color-danger); }
+  .act.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--color-danger) 12%, transparent); border-color: var(--color-danger); }
+
+  .projects { display: flex; flex-direction: column; gap: 2px; }
+  .sub { font-size: var(--text-caption); font-weight: var(--fw-semibold); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+  .proj { display: flex; align-items: center; gap: var(--space-2); padding: 4px var(--space-2); color: var(--color-text-secondary); font-size: var(--text-body-sm); }
+  .proj-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proj-count { font-size: var(--text-caption); color: var(--color-text-muted); }
+
+  .empty { font-size: var(--text-body-sm); color: var(--color-text-muted); line-height: var(--lh-normal); }
+  .list-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .filter { width: 180px; }
+  .filter :global(.wrap) { width: 100%; }
+
+  .agents { display: flex; flex-direction: column; gap: 1px; }
+  .agent { display: flex; align-items: center; gap: var(--space-2); padding: 5px var(--space-2); border-radius: var(--radius-sm); }
+  .agent:hover { background: var(--color-surface-sunken); }
+  .a-emoji { font-size: 15px; line-height: 1; flex: none; }
+  .a-name { flex: 1; min-width: 0; font-size: var(--text-body-sm); color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .a-proj { font-size: var(--text-caption); color: var(--color-text-muted); }
+  .a-acts { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+  .mini {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: var(--radius-sm);
+    background: transparent; color: var(--color-text-muted); cursor: pointer;
+  }
+  .agent:hover .mini, .proj .mini { color: var(--color-text-secondary); }
+  .mini:hover:not(:disabled) { background: var(--color-surface); color: var(--color-text-primary); }
+  .mini.danger:hover:not(:disabled) { background: var(--color-danger); color: #fff; }
+  .mini:disabled { opacity: 0.4; cursor: default; }
+
+  .d-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3); color: var(--color-text-muted); }
+  .d-empty p { font-size: var(--text-body-sm); }
+
+  /* confirm */
+  .cd-scrim { position: fixed; inset: 36px 0 0 0; z-index: 92; border: 0; cursor: default; background: color-mix(in srgb, var(--color-bg) 60%, transparent); backdrop-filter: blur(4px); }
+  .cd-box {
+    position: fixed; z-index: 93; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: min(440px, 92vw); padding: var(--space-5);
+    background: var(--color-surface-raised); border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+    display: flex; flex-direction: column; gap: var(--space-3);
+  }
+  .cd-head { display: flex; align-items: center; gap: var(--space-2); color: var(--color-danger); }
+  .cd-head h2 { font-size: var(--text-h2); font-weight: var(--fw-semibold); color: var(--color-text-primary); }
+  .cd-body { font-size: var(--text-body-sm); color: var(--color-text-secondary); line-height: var(--lh-normal); }
+  .cd-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+  .cd-cancel { height: 32px; padding: 0 var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--color-border); background: transparent; color: var(--color-text-secondary); font-size: var(--text-body-sm); cursor: pointer; }
+  .cd-cancel:hover { color: var(--color-text-primary); background: var(--color-surface-sunken); }
+  .cd-delete { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--color-danger); background: var(--color-danger); color: #fff; font-size: var(--text-body-sm); font-weight: var(--fw-medium); cursor: pointer; }
+  .cd-delete:hover:not(:disabled) { filter: brightness(1.08); }
+  .cd-delete:disabled { opacity: 0.5; cursor: default; }
 </style>

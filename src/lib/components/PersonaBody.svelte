@@ -20,12 +20,16 @@
     agent,
     loading = false,
     deploy,
+    onCategory,
   }: {
     agent: Agent | null;
     loading?: boolean;
     /** Optional deployment band rendered directly under the name/division,
         above the vibe + persona body (the DeploymentMatrix). */
     deploy?: Snippet;
+    /** When provided, the category ("division") pill becomes a button that
+        deep-links to that division. */
+    onCategory?: (slug: string) => void;
   } = $props();
 
   // Rendered, deterministic HTML for the persona markdown body.
@@ -37,7 +41,15 @@
     <span class="pb-emoji" aria-hidden="true">{agent.emoji ?? "🧩"}</span>
     <div class="pb-titles">
       <h2 class="pb-name">{agent.name}</h2>
-      <span class="pb-cat"><Pill tone="brand">{corpus.labelOf(agent.category)}</Pill></span>
+      <span class="pb-cat">
+        {#if onCategory}
+          <button class="pb-cat-btn" onclick={() => onCategory(agent.category)} title={`See all ${corpus.labelOf(agent.category)} agents`}>
+            <Pill tone="brand">{corpus.labelOf(agent.category)}</Pill>
+          </button>
+        {:else}
+          <Pill tone="brand">{corpus.labelOf(agent.category)}</Pill>
+        {/if}
+      </span>
     </div>
   </header>
 
@@ -85,6 +97,9 @@
     color: var(--color-text-primary);
   }
   .pb-cat { display: inline-flex; }
+  .pb-cat-btn { background: transparent; border: 0; padding: 0; cursor: pointer; display: inline-flex; border-radius: var(--radius-full); }
+  .pb-cat-btn:hover { filter: brightness(1.12); }
+  .pb-cat-btn:focus-visible { outline: 2px solid var(--color-focus, var(--color-brand)); outline-offset: 2px; }
 
   /* Deployment band — sits between the header and the persona text, so "where
      it's installed" reads right under the name/division. */

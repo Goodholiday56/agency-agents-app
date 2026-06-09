@@ -5,6 +5,16 @@
 
 import type { AgentsFilter, SettingsSection, SidebarSection, ThemePreference } from "$lib/types";
 
+/** A navigable app location — the unit of back/forward history. Captures the
+    section plus the full Agents workspace view-state so a back/forward jump
+    restores the filter, category, and the open agent. */
+interface NavLocation {
+  section: SidebarSection;
+  agentsFilter: AgentsFilter;
+  agentsCategory: string | null;
+  agentsSelected: string | null;
+}
+
 /** Default width of the package detail pane in pixels — the original fixed width. */
 export const DETAIL_PANE_DEFAULT_WIDTH = 420;
 /** Min allowed width — below this the actions footer crowds up. */
@@ -107,6 +117,22 @@ class UiStore {
       Agents entry (resets to "all") and by Dashboard / chart deep-links (e.g.
       "attention") so navigating in lands on the right slice of the list. */
   agentsFilter: AgentsFilter = $state("all");
+  /** Active category ("division") filter for the Agents workspace; null = all.
+      Lifted into ui so division pills can deep-link to it and so back/forward
+      can restore it. */
+  agentsCategory: string | null = $state(null);
+  /** Slug of the agent open in the workspace detail pane; null = none. In ui so
+      back/forward can restore the open agent. */
+  agentsSelected: string | null = $state(null);
+
+  /** Back/forward history of app locations + the cursor into it. */
+  navStack: NavLocation[] = $state([]);
+  navIndex: number = $state(-1);
+  /** True only while applying a back/forward jump, so restoring state doesn't
+      push a fresh history entry. Plain (non-reactive) field on purpose. */
+  private applyingNav = false;
+  canBack = $derived(this.navIndex > 0);
+  canForward = $derived(this.navIndex < this.navStack.length - 1);
 
   /** the package currently shown in the detail panel; null = panel closed */
   selectedPackage: { name: string; kind: "formula" | "cask" } | null = $state(null);
@@ -148,14 +174,94 @@ class UiStore {
     this.section = s;
     // Navigating to ANY section closes the package detail slide-over.
     this.selectedPackage = null;
+    this.commitNav();
   }
 
-  /** Jump to the unified Agents workspace with a filter preselected. Used by
-      the sidebar (defaults to "all"), the Dashboard stat cards, and the
-      Dashboard charts (coverage matrix / health donut deep-links). */
-  openAgents(filter: AgentsFilter = "all") {
+  /** Jump to the unified Agents workspace with a state-filter (and optional
+      category) preselected; resets the open agent. Used by the sidebar, the
+      Dashboard stat cards, and the command palette. */
+  openAgents(filter: AgentsFilter = "all", category: string | null = null) {
+    this.applyingNav = true;
     this.agentsFilter = filter;
-    this.setSection("personas");
+    this.agentsCategory = category;
+    this.agentsSelected = null;
+    this.section = "personas";
+    this.selectedPackage = null;
+    this.applyingNav = false;
+    this.commitNav();
+  }
+
+  /** Open a "division" (category) in the Agents workspace: set the category
+      filter, reset the state lens to All, and KEEP any open agent (so clicking
+      an agent's own division shows its siblings beside it). Wired to every
+      division pill so a division click anywhere lands on its agents. */
+  openDivision(category: string) {
+    this.applyingNav = true;
+    this.agentsCategory = category;
+    this.agentsFilter = "all";
+    this.section = "personas";
+    this.selectedPackage = null;
+    this.applyingNav = false;
+    this.commitNav();
+  }
+
+  setAgentsFilter(f: AgentsFilter) { this.agentsFilter = f; this.commitNav(); }
+  setAgentsCategory(c: string | null) { this.agentsCategory = c; this.commitNav(); }
+  selectAgent(slug: string | null) { this.agentsSelected = slug; this.commitNav(); }
+
+  /** Seed history with the current location — call once at startup, after the
+      default landing section has been applied. */
+  initNav() { this.commitNav(); }
+
+  back() {
+    if (this.navIndex > 0) {
+      this.navIndex -= 1;
+      this.applyNav(this.navStack[this.navIndex]);
+    }
+  }
+  forward() {
+    if (this.navIndex < this.navStack.length - 1) {
+      this.navIndex += 1;
+      this.applyNav(this.navStack[this.navIndex]);
+    }
+  }
+
+  private snapshotNav(): NavLocation {
+    return {
+      section: this.section,
+      agentsFilter: this.agentsFilter,
+      agentsCategory: this.agentsCategory,
+      agentsSelected: this.agentsSelected,
+    };
+  }
+  /** Push the current location onto history (truncating any forward entries),
+      unless it's identical to the cursor or we're mid back/forward. */
+  private commitNav() {
+    if (this.applyingNav) return;
+    const loc = this.snapshotNav();
+    const cur = this.navStack[this.navIndex];
+    if (
+      cur &&
+      cur.section === loc.section &&
+      cur.agentsFilter === loc.agentsFilter &&
+      cur.agentsCategory === loc.agentsCategory &&
+      cur.agentsSelected === loc.agentsSelected
+    ) {
+      return;
+    }
+    const next = [...this.navStack.slice(0, this.navIndex + 1), loc];
+    const CAP = 100;
+    this.navStack = next.length > CAP ? next.slice(next.length - CAP) : next;
+    this.navIndex = this.navStack.length - 1;
+  }
+  private applyNav(loc: NavLocation) {
+    this.applyingNav = true;
+    this.section = loc.section;
+    this.agentsFilter = loc.agentsFilter;
+    this.agentsCategory = loc.agentsCategory;
+    this.agentsSelected = loc.agentsSelected;
+    this.selectedPackage = null;
+    this.applyingNav = false;
   }
 
   openDrawer() {

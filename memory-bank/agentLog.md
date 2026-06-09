@@ -297,3 +297,37 @@ together.
 - **BACKLOG (new, Michael):** a "local-runtime system-prompt" target class — Ollama Modelfile `SYSTEM`
   / LM Studio preset — as its OWN renderer+runtime track, NOT an entry in the agent-host tool set
   (those 7+4 ingest a persona file into an agents dir; runtimes serve weights and have no agents dir).
+
+## 2026-06-09 — Phase B charts, back/forward nav, Tools console, dev icon + squircle
+Big session on top of the IA re-org. All frontend except the Tools backend commands + dev-icon (Rust).
+- **PHASE B — Dashboard charts (dependency-free SVG/CSS).** `HealthDonut.svelte` (install-health donut,
+  clickable legend deep-links by state), `CoverageMatrix.svelte` (category × tool heatmap; only
+  tools/columns with installs — empty = noise; cells deep-link). Rebuilt `AgencyDashboard`: stats +
+  donut + coverage-by-tool bars + matrix + full category distribution. Dropped redundant "Tools on this
+  device" card. Zero-value stat cards (need attention / found to track) hide when 0.
+- **BACK/FORWARD NAV.** `ui` gained a `NavLocation` history (section + agentsFilter + agentsCategory +
+  agentsSelected) with `back()/forward()/canBack/canForward`, commit-on-navigation + `applyingNav` guard.
+  Lifted `agentsCategory` + `agentsSelected` into `ui` (workspace drives its detail off them via an
+  effect). Titlebar ◀▶ buttons, ⌘[ / ⌘], mouse buttons 3/4. `initNav()` seeded in +layout.
+- **DIVISION DEEP-LINKS.** `ui.openDivision(slug)` → Agents filtered to that category (keeps open agent).
+  Wired to the persona-header pill (PersonaBody `onCategory`), Dashboard category bars, CoverageMatrix
+  rows+cells. Lens counts now NARROW to the selected division. Added a **"Not installed"** lens
+  (complement of Installed). Lens row hides any zero-count lens except All + the active one.
+- **TOOLS CONSOLE (the "by tool" axis).** Rust: `reveal_path` (open dir in Finder/Explorer/xdg) +
+  `tool_versions` (best-effort `<bin> --version`, concurrent, 3s timeout) + `ToolVersion` type, both
+  registered. `ToolsView.svelte` rebuilt as **list/detail two-pane** (resizable list, persisted width):
+  brand badges (`util/toolBadge.ts` accent+initial), per-tool health bars, version, detected dot; detail
+  console = Reveal folder, Default-target `Switch`, **Sync to catalog / Track all / Remove all** (via
+  `install.bulk`), per-agent diff/update/track/remove, projects list for project tools. `install` store
+  gained `versions`/`loadVersions`/`versionOf`/`revealPath`. New shared `Switch.svelte` (from Settings).
+- **DEV DOCK ICON (macOS, debug-only).** Set `NSApplication.applicationIconImage` from `icons/icon.png`
+  via objc2 msg_send. KEY FIX: do it in the **`RunEvent::Ready`** handler (changed `.run(ctx)` →
+  `.build(ctx)?.run(|_,e| …)`), NOT `setup` — setup is too early, macOS reassigns the default at
+  activation. Deps: `objc2` + `objc2-foundation` (already locked via window-vibrancy). Confirmed working.
+- **ICON → macOS squircle.** Source was full-bleed purple square (looked like a sticker). Regenerated:
+  ImageMagick rounds the brain art to an 824px squircle (r≈185, ~22.4%) on a 1024 transparent canvas
+  (100px margin) → `docs/icon/agency-icon-macos-1024.png`, then `npm run tauri icon` regenerated all
+  sizes + `.icns`/`.ico`. Now sits like a native app icon.
+- Verdict: svelte-check 0 err; `npm run build` ✓; `cargo test --lib` 247/0; `cargo check` ✓.
+- **REMAINING:** Phase C (Windows/Linux titlebar/traffic-light degradation) · renderer parity vs
+  convert.sh (load-bearing) · uninstall-backup decision · local-runtime target · #8 multi-file renderers.

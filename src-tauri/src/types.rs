@@ -302,6 +302,16 @@ pub struct ToolInfo {
     pub installed_count: u32,
 }
 
+/// Best-effort detected version string for a tool, from probing `<bin>
+/// --version`. `version` is `None` when the binary isn't on PATH, the probe
+/// timed out, or the tool has no known version command.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolVersion {
+    pub tool: Tool,
+    pub version: Option<String>,
+}
+
 /// One category for the Discover grid. `slug` is the corpus parent dir
 /// (e.g. `"engineering"`); `icon` is a PascalCase Lucide icon name the
 /// frontend resolves via its static icon map.

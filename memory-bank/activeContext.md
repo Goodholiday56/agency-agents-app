@@ -1,9 +1,17 @@
 # Active Context — Agency Agents
 
-**State**: BUILD. The cross-tool install-management loop WORKS. IA re-org Phase A DONE. Signed build works.
-**Last updated**: 2026-06-08 (later)
+**State**: BUILD. Unified IA + Dashboard charts + back/forward nav + Tools console all DONE. Signed build works.
+**Last updated**: 2026-06-09
 
 ## Current state (read NEXT-SESSION.md for the full picture + IMMEDIATE backlog)
+- **Phase B + nav + Tools (2026-06-09):** Dashboard has 4 dependency-free charts (`HealthDonut`,
+  `CoverageMatrix` category×tool, coverage-by-tool bars, category distribution). **Back/forward nav**
+  (titlebar ◀▶, ⌘[/], mouse 3/4) over a `ui` NavLocation history; `agentsCategory`+`agentsSelected`
+  lifted into `ui`. **Division pills deep-link** everywhere (`ui.openDivision`); lens counts narrow to
+  the division; added "Not installed" lens; zero-count lenses/stats hide. **Tools = list/detail console**
+  (`ToolsView` rebuilt): badges (`util/toolBadge`), health bars, versions (`tool_versions`), Reveal
+  (`reveal_path`), Default-target Switch, Sync-to-catalog/Track-all/Remove-all, projects list. Dev Dock
+  icon set on `RunEvent::Ready` (macOS debug). Icon redrawn as a **macOS squircle** (regenerated).
 - **UNIFIED Agents workspace (Phase A done).** Agents + Library are ONE three-pane surface
   (`AgentsWorkspace.svelte`): list pane (filter lens All/Installed/Needs-attention/Untracked + search +
   Category ▾ + Select-mode bulk) · `ResizeHandle` · persistent detail pane (`PersonaBody` + the

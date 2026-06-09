@@ -58,12 +58,16 @@
   const FILTERS: { id: AgentsFilter; label: string }[] = [
     { id: "all", label: "All" },
     { id: "installed", label: "Installed" },
+    { id: "notInstalled", label: "Not installed" },
     { id: "attention", label: "Needs attention" },
     { id: "untracked", label: "Untracked" },
   ];
 
   function lensMatch(filter: AgentsFilter, rows: InstalledAgent[] | undefined): boolean {
     if (filter === "all") return true;
+    // "Not installed" is the complement of installed — and it's the one lens
+    // that MATCHES agents with no rows, so it's checked before the empty guard.
+    if (filter === "notInstalled") return !rows || !rows.some((r) => r.state !== "removed");
     if (!rows || rows.length === 0) return false;
     if (filter === "installed") return rows.some((r) => r.state !== "removed");
     if (filter === "attention")
@@ -72,40 +76,57 @@
     return true;
   }
 
+  // Counts respect the active division — so the lens badges narrow when a
+  // category is selected (All N / Installed N within that division, etc.).
   const counts = $derived.by(() => {
+    const cat = ui.agentsCategory;
+    const pool = cat ? corpus.agents.filter((a) => a.category === cat) : corpus.agents;
     let installed = 0,
       attention = 0,
       untracked = 0;
-    for (const a of corpus.agents) {
+    for (const a of pool) {
       const rows = installsBySlug.get(a.slug);
       if (!rows || rows.length === 0) continue;
       if (rows.some((r) => r.state !== "removed")) installed++;
       if (rows.some((r) => r.state === "outdated" || r.state === "modified" || r.state === "removed")) attention++;
       if (rows.some((r) => r.state === "foreign")) untracked++;
     }
-    return { all: corpus.agents.length, installed, attention, untracked };
+    return { all: pool.length, installed, notInstalled: pool.length - installed, attention, untracked };
   });
   function countFor(id: AgentsFilter): number {
-    return id === "all" ? counts.all : id === "installed" ? counts.installed : id === "attention" ? counts.attention : counts.untracked;
+    return id === "all"
+      ? counts.all
+      : id === "installed"
+        ? counts.installed
+        : id === "notInstalled"
+          ? counts.notInstalled
+          : id === "attention"
+            ? counts.attention
+            : counts.untracked;
+  }
+  // Keep the lens row quiet: show "All" always, the active lens always (so it
+  // never disappears under you), and any other lens only when it has matches.
+  function showLens(id: AgentsFilter): boolean {
+    return id === "all" || ui.agentsFilter === id || countFor(id) > 0;
   }
 
-  // ── List state ──
+  // ── List state ── (filter + category live in ui so back/forward + division
+  // deep-links drive them; search query stays local — not a navigation.)
   let query = $state("");
-  let category = $state<string | null>(null);
   let catMenuOpen = $state(false);
 
   const visible = $derived(
-    corpus.filtered(category, query).filter((a) => lensMatch(ui.agentsFilter, installsBySlug.get(a.slug))),
+    corpus.filtered(ui.agentsCategory, query).filter((a) => lensMatch(ui.agentsFilter, installsBySlug.get(a.slug))),
   );
 
   function setFilter(f: AgentsFilter) {
-    ui.agentsFilter = f;
+    ui.setAgentsFilter(f);
   }
   function pickCategory(slug: string | null) {
-    category = slug;
+    ui.setAgentsCategory(slug);
     catMenuOpen = false;
   }
-  const categoryLabel = $derived(category ? corpus.labelOf(category) : "All categories");
+  const categoryLabel = $derived(ui.agentsCategory ? corpus.labelOf(ui.agentsCategory) : "All categories");
 
   // Compact per-row state dots (one per install row, colored by state).
   function dotTone(s: InstallState): string {
@@ -116,27 +137,43 @@
   }
 
   // ── Detail selection (persistent pane) ──
+  // Driven by ui.agentsSelected so back/forward + deep-links restore the open
+  // agent. The effect shows the list-view stub instantly, then loads the body.
   let detailStub = $state<Agent | null>(null);
   let detail = $state<Agent | null>(null);
   let detailLoading = $state(false);
   const panelAgent = $derived(detail ?? detailStub);
 
-  async function openAgent(a: Agent) {
-    detailStub = a;
-    detail = a.body ? a : null;
-    detailLoading = !a.body;
-    if (!a.body) {
-      const full = await corpus.get(a.slug);
-      if (detailStub?.slug === a.slug) {
+  $effect(() => {
+    const slug = ui.agentsSelected;
+    if (!slug) {
+      detailStub = null;
+      detail = null;
+      detailLoading = false;
+      return;
+    }
+    const stub = corpus.agents.find((a) => a.slug === slug) ?? null;
+    detailStub = stub;
+    if (stub?.body) {
+      detail = stub;
+      detailLoading = false;
+      return;
+    }
+    detail = null;
+    detailLoading = true;
+    void corpus.get(slug).then((full) => {
+      if (ui.agentsSelected === slug) {
         detail = full;
         detailLoading = false;
       }
-    }
+    });
+  });
+
+  function openAgent(a: Agent) {
+    ui.selectAgent(a.slug);
   }
   function closeDetail() {
-    detailStub = null;
-    detail = null;
-    detailLoading = false;
+    ui.selectAgent(null);
   }
 
   // ── Diff modal (opened from the DeploymentMatrix) ──
@@ -217,30 +254,32 @@
       <div class="lp-filters">
         <div class="seg" role="tablist" aria-label="Filter agents">
           {#each FILTERS as f (f.id)}
-            <button
-              class="seg-btn"
-              class:on={ui.agentsFilter === f.id}
-              role="tab"
-              aria-selected={ui.agentsFilter === f.id}
-              onclick={() => setFilter(f.id)}
-            >
-              {f.label}<span class="seg-n">{countFor(f.id)}</span>
-            </button>
+            {#if showLens(f.id)}
+              <button
+                class="seg-btn"
+                class:on={ui.agentsFilter === f.id}
+                role="tab"
+                aria-selected={ui.agentsFilter === f.id}
+                onclick={() => setFilter(f.id)}
+              >
+                {f.label}<span class="seg-n">{countFor(f.id)}</span>
+              </button>
+            {/if}
           {/each}
         </div>
 
         <div class="cat-wrap">
-          <button class="ghost cat-btn" class:active={!!category} onclick={() => (catMenuOpen = !catMenuOpen)}>
+          <button class="ghost cat-btn" class:active={!!ui.agentsCategory} onclick={() => (catMenuOpen = !catMenuOpen)}>
             <span class="truncate">{categoryLabel}</span><ChevronDown size={13} />
           </button>
           {#if catMenuOpen}
             <div class="cat-menu" role="menu">
-              <button class="cat-opt" role="menuitem" class:on={!category} onclick={() => pickCategory(null)}>
+              <button class="cat-opt" role="menuitem" class:on={!ui.agentsCategory} onclick={() => pickCategory(null)}>
                 <LayersIcon size={14} /><span class="truncate">All categories</span><span class="cat-c">{corpus.agents.length}</span>
               </button>
               {#each corpus.tiles as c (c.slug)}
                 {@const Icon = resolveCategoryIcon(c.icon)}
-                <button class="cat-opt" role="menuitem" class:on={category === c.slug} onclick={() => pickCategory(c.slug)}>
+                <button class="cat-opt" role="menuitem" class:on={ui.agentsCategory === c.slug} onclick={() => pickCategory(c.slug)}>
                   <Icon size={14} /><span class="truncate">{c.label}</span><span class="cat-c">{c.count}</span>
                 </button>
               {/each}
@@ -349,7 +388,7 @@
         <button class="dp-close" onclick={closeDetail} aria-label="Close detail" title="Close detail"><XIcon size={16} /></button>
       </div>
       <div class="dp-scroll">
-        <PersonaBody agent={panelAgent} loading={detailLoading}>
+        <PersonaBody agent={panelAgent} loading={detailLoading} onCategory={(slug) => ui.openDivision(slug)}>
           {#snippet deploy()}
             {#if panelAgent}
               <DeploymentMatrix agent={panelAgent} onDiff={(t) => (diffTarget = t)} />
@@ -366,7 +405,9 @@
           <div class="dpe-stats">
             <button class="dpe-stat" onclick={() => setFilter("all")}><span>{counts.all}</span><small>available</small></button>
             <button class="dpe-stat" onclick={() => setFilter("installed")}><span>{counts.installed}</span><small>installed</small></button>
-            <button class="dpe-stat" class:warn={counts.attention > 0} onclick={() => setFilter("attention")}><span>{counts.attention}</span><small>need attention</small></button>
+            {#if counts.attention > 0}
+              <button class="dpe-stat warn" onclick={() => setFilter("attention")}><span>{counts.attention}</span><small>need attention</small></button>
+            {/if}
           </div>
         </div>
       </div>

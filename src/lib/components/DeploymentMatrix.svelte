@@ -244,8 +244,8 @@
   .dm-pdot[data-tone="warn"]   { background: var(--color-warning); }
   .dm-pdot[data-tone="info"]   { background: var(--color-brand); }
   .dm-pdot[data-tone="danger"] { background: var(--color-danger); }
-  /* Optically center the pill label — nudge the text up 2px against the dot. */
-  .dm-plabel { position: relative; top: -2px; }
+  /* Optically center the pill label — nudge the text up 1px against the dot. */
+  .dm-plabel { position: relative; top: -1px; }
   .dm-pproj { color: var(--color-text-muted); }
   .dm-pproj::before { content: "· "; }
 

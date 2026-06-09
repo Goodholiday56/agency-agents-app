@@ -22,6 +22,9 @@
     ui.loadSidebarCollapsedFromStorage();
     ui.loadSidebarWidthFromStorage();
     ui.loadDetailPaneWidthFromStorage();
+    // Seed back/forward history with the landing location (after the default
+    // section has been resolved above), so the first entry is real.
+    ui.initNav();
     activity.hydrate();
     // Install state — reconcile ONCE here at the app root, not inside the view
     // components. A view that both reads install.* state AND triggers a mutation

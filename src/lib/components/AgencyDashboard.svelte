@@ -1,14 +1,18 @@
 <script lang="ts">
   /**
-   * Agency Dashboard — the at-a-glance rollup that replaces brew's Dashboard.
-   * Available agents, what's installed/needs-attention across tools, detected
-   * tools, and the catalog's category shape.
+   * Agency Dashboard — the at-a-glance overview. Four rollup stats, then the
+   * charts: install-health donut, coverage-by-tool bars, the cross-tool coverage
+   * matrix (category × tool), and the catalog's category distribution. Every
+   * surface deep-links into the Agents workspace (with the matching filter) or
+   * the Tools view. All charts are dependency-free (SVG + CSS).
    */
   import { resolveCategoryIcon } from "$lib/util/categoryIcon";
   import { onMount } from "svelte";
   import { corpus } from "$lib/stores/corpus.svelte";
-  import { install } from "$lib/stores/install.svelte";
+  import { install, SUPPORTED_TOOLS } from "$lib/stores/install.svelte";
   import { ui } from "$lib/stores/ui.svelte";
+  import HealthDonut from "./HealthDonut.svelte";
+  import CoverageMatrix from "./CoverageMatrix.svelte";
 
   // Pure reader — install state loaded globally in +layout.
   onMount(() => corpus.ensureLoaded());
@@ -19,13 +23,36 @@
     install.installed.filter((i) => ["outdated", "modified", "removed"].includes(i.state)).length,
   );
   const foreign = $derived(install.installed.filter((i) => i.state === "foreign").length);
-  const detected = $derived(install.tools.filter((t) => t.detected));
+  const totalInstalls = $derived(install.installed.length);
 
-  // Top categories by agent count, with a relative bar.
-  const topCats = $derived(
-    [...corpus.categories].sort((a, b) => b.count - a.count).slice(0, 8),
+  // ── Install-health donut (every install row, split by reconciled state) ──
+  const byState = $derived.by(() => {
+    const c = { current: 0, outdated: 0, modified: 0, foreign: 0, removed: 0 };
+    for (const i of install.installed) c[i.state]++;
+    return c;
+  });
+  const healthSegments = $derived([
+    { label: "In sync",   value: byState.current,  color: "var(--color-success)", onClick: () => ui.openAgents("installed") },
+    { label: "Outdated",  value: byState.outdated,  color: "var(--color-warning)", onClick: () => ui.openAgents("attention") },
+    { label: "Modified",  value: byState.modified,  color: "color-mix(in srgb, var(--color-warning) 55%, var(--color-danger))", onClick: () => ui.openAgents("attention") },
+    { label: "Untracked", value: byState.foreign,   color: "var(--color-brand)",   onClick: () => ui.openAgents("untracked") },
+    { label: "Missing",   value: byState.removed,   color: "var(--color-danger)",  onClick: () => ui.openAgents("attention") },
+  ]);
+
+  // ── Coverage by tool — only tools that actually hold agents (less noise) ──
+  const perTool = $derived(
+    SUPPORTED_TOOLS.map((t) => ({
+      id: t.id,
+      label: t.label,
+      count: install.installed.filter((i) => i.tool === t.id).length,
+      detected: install.tools.find((x) => x.tool === t.id)?.detected ?? false,
+    })).filter((t) => t.count > 0),
   );
-  const maxCat = $derived(Math.max(1, ...topCats.map((c) => c.count)));
+  const maxTool = $derived(Math.max(1, ...perTool.map((t) => t.count)));
+
+  // ── Catalog by category (all, sorted by size) ──
+  const cats = $derived([...corpus.tiles].sort((a, b) => b.count - a.count));
+  const maxCat = $derived(Math.max(1, ...cats.map((c) => c.count)));
 </script>
 
 <section class="dash">
@@ -38,46 +65,43 @@
       <span class="s-num">{managed}</span>
       <span class="s-lbl">installed by you</span>
     </button>
-    <button class="stat" class:warn={attention > 0} onclick={() => ui.openAgents("attention")}>
-      <span class="s-num">{attention}</span>
-      <span class="s-lbl">need attention</span>
-    </button>
-    <button class="stat" class:info={foreign > 0} onclick={() => ui.openAgents("untracked")}>
-      <span class="s-num">{foreign}</span>
-      <span class="s-lbl">found to track</span>
-    </button>
+    {#if attention > 0}
+      <button class="stat warn" onclick={() => ui.openAgents("attention")}>
+        <span class="s-num">{attention}</span>
+        <span class="s-lbl">need attention</span>
+      </button>
+    {/if}
+    {#if foreign > 0}
+      <button class="stat info" onclick={() => ui.openAgents("untracked")}>
+        <span class="s-num">{foreign}</span>
+        <span class="s-lbl">found to track</span>
+      </button>
+    {/if}
   </div>
 
   <div class="cols">
     <div class="card">
-      <h3 class="c-title">Catalog by category</h3>
-      <ul class="cats">
-        {#each topCats as c (c.slug)}
-          {@const Icon = resolveCategoryIcon(c.icon)}
-          <li class="cat">
-            <button class="cat-btn" onclick={() => ui.setSection("personas")}>
-              <span class="cat-ic"><Icon size={15} /></span>
-              <span class="cat-label">{c.label}</span>
-              <span class="cat-bar"><span class="cat-fill" style="width:{(c.count / maxCat) * 100}%"></span></span>
-              <span class="cat-count">{c.count}</span>
-            </button>
-          </li>
-        {/each}
-      </ul>
+      <h3 class="c-title">Install health</h3>
+      {#if totalInstalls === 0}
+        <p class="muted">Nothing installed yet — deploy an agent to see its health here.</p>
+      {:else}
+        <HealthDonut segments={healthSegments} centerLabel={String(totalInstalls)} centerSub="installs" />
+      {/if}
     </div>
 
     <div class="card">
-      <h3 class="c-title">Tools on this Mac</h3>
-      {#if detected.length === 0}
-        <p class="muted">No supported AI tools detected yet.</p>
+      <h3 class="c-title">Coverage by tool</h3>
+      {#if perTool.length === 0}
+        <p class="muted">No agents installed yet — deploy one and it'll show up here.</p>
       {:else}
-        <ul class="tools">
-          {#each detected as t (t.tool)}
-            <li class="tool">
-              <button class="tool-btn" onclick={() => ui.setSection("tools")}>
-                <span class="tool-dot"></span>
-                <span class="tool-name">{t.label}</span>
-                <span class="tool-count">{t.installedCount}</span>
+        <ul class="bars">
+          {#each perTool as t (t.id)}
+            <li>
+              <button class="bar-btn" onclick={() => ui.setSection("tools")} title={t.detected ? "Detected on this device" : "Not detected on this device"}>
+                <span class="tool-dot" class:off={!t.detected}></span>
+                <span class="bar-label">{t.label}</span>
+                <span class="bar-track"><span class="bar-fill" style="width:{(t.count / maxTool) * 100}%"></span></span>
+                <span class="bar-count">{t.count}</span>
               </button>
             </li>
           {/each}
@@ -86,10 +110,32 @@
       <button class="link" onclick={() => ui.setSection("tools")}>Manage tools →</button>
     </div>
   </div>
+
+  <div class="card">
+    <h3 class="c-title">Cross-tool coverage</h3>
+    <CoverageMatrix />
+  </div>
+
+  <div class="card">
+    <h3 class="c-title">Catalog by category</h3>
+    <ul class="bars scroll">
+      {#each cats as c (c.slug)}
+        {@const Icon = resolveCategoryIcon(c.icon)}
+        <li>
+          <button class="bar-btn" onclick={() => ui.openDivision(c.slug)}>
+            <span class="bar-ic"><Icon size={15} /></span>
+            <span class="bar-label">{c.label}</span>
+            <span class="bar-track"><span class="bar-fill" style="width:{(c.count / maxCat) * 100}%"></span></span>
+            <span class="bar-count">{c.count}</span>
+          </button>
+        </li>
+      {/each}
+    </ul>
+  </div>
 </section>
 
 <style>
-  .dash { height: 100%; overflow-y: auto; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-5); }
+  .dash { height: 100%; overflow-y: auto; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-4); }
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); }
   .stat {
     display: flex; flex-direction: column; gap: 4px; align-items: flex-start;
@@ -104,32 +150,27 @@
 
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); align-items: start; }
   @media (max-width: 820px) { .cols { grid-template-columns: 1fr; } }
-  .card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-raised); padding: var(--space-4); }
+  .card { border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface-raised); padding: var(--space-4); min-width: 0; }
   .c-title { font-size: var(--text-body-sm); font-weight: var(--fw-semibold); color: var(--color-text-secondary); margin-bottom: var(--space-3); text-transform: uppercase; letter-spacing: 0.04em; }
   .muted { color: var(--color-text-muted); font-size: var(--text-body-sm); }
 
-  .cats { display: flex; flex-direction: column; gap: 2px; }
-  .cat-btn {
+  /* ── Generic bar list (coverage-by-tool + category distribution) ── */
+  .bars { display: flex; flex-direction: column; gap: 2px; }
+  .bars.scroll { max-height: 280px; overflow-y: auto; }
+  .bar-btn {
     display: flex; align-items: center; gap: var(--space-2); width: 100%;
     padding: 6px var(--space-2); border-radius: var(--radius-sm);
     background: transparent; cursor: pointer; text-align: left;
   }
-  .cat-btn:hover { background: var(--color-surface-sunken); }
-  .cat-ic { display: inline-flex; color: var(--color-text-secondary); }
-  .cat-label { width: 130px; font-size: var(--text-body-sm); color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cat-bar { flex: 1; height: 6px; background: var(--color-surface-sunken); border-radius: var(--radius-full); overflow: hidden; }
-  .cat-fill { display: block; height: 100%; background: var(--color-brand); border-radius: var(--radius-full); }
-  .cat-count { width: 28px; text-align: right; font-size: var(--text-caption); color: var(--color-text-muted); }
+  .bar-btn:hover { background: var(--color-surface-sunken); }
+  .bar-ic { display: inline-flex; color: var(--color-text-secondary); flex: none; }
+  .bar-label { width: 116px; font-size: var(--text-body-sm); color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: none; }
+  .bar-track { flex: 1; height: 6px; background: var(--color-surface-sunken); border-radius: var(--radius-full); overflow: hidden; min-width: 24px; }
+  .bar-fill { display: block; height: 100%; background: var(--color-brand); border-radius: var(--radius-full); }
+  .bar-count { width: 30px; text-align: right; font-size: var(--text-caption); color: var(--color-text-muted); font-variant-numeric: tabular-nums; flex: none; }
 
-  .tools { display: flex; flex-direction: column; gap: 1px; margin-bottom: var(--space-3); }
-  .tool-btn {
-    display: flex; align-items: center; gap: var(--space-2); width: 100%;
-    padding: 6px var(--space-2); border-radius: var(--radius-sm);
-    background: transparent; cursor: pointer; text-align: left;
-  }
-  .tool-btn:hover { background: var(--color-surface-sunken); }
   .tool-dot { width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--color-success); flex: none; }
-  .tool-name { flex: 1; font-size: var(--text-body-sm); color: var(--color-text-primary); }
-  .tool-count { font-size: var(--text-caption); color: var(--color-text-muted); }
-  .link { background: transparent; color: var(--color-brand); font-size: var(--text-body-sm); cursor: pointer; padding: 0; }
+  .tool-dot.off { background: var(--color-text-muted); opacity: 0.5; }
+
+  .link { background: transparent; color: var(--color-brand); font-size: var(--text-body-sm); cursor: pointer; padding: 0; margin-top: var(--space-3); }
 </style>

@@ -93,6 +93,12 @@ url = "2"
 # call its macOS APIs.
 [target.'cfg(target_os = "macos")'.dependencies]
 window-vibrancy = "0.6"
+# Dev-only: set the Dock icon at runtime so `tauri dev` shows the real app
+# icon instead of the generic unbundled-binary icon (bundle.icon only applies
+# to `tauri build`). Resolves NSImage/NSApplication via the obj-c runtime —
+# same objc2 stack window-vibrancy already pulls in.
+objc2 = "0.6"
+objc2-foundation = "0.3"
 # Direct use of the Security framework for a single batched Keychain read
 # (one SecItemCopyMatching for all GitHub items → one auth prompt instead of
 # three). Pinned to "2" to unify with the version keyring already compiles.

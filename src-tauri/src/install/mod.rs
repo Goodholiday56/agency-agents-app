@@ -21,7 +21,8 @@ use crate::error::AppError;
 use crate::render;
 use crate::state::AppState;
 use crate::types::{
-    AgentDiff, InstallRecord, InstallState, InstalledAgent, ProjectInfo, Tool, ToolInfo, UpdateKind,
+    AgentDiff, InstallRecord, InstallState, InstalledAgent, ProjectInfo, Tool, ToolInfo, ToolVersion,
+    UpdateKind,
 };
 use crate::util::fs::{atomic_write, read_capped};
 
@@ -653,6 +654,88 @@ pub async fn tools_list(app: AppHandle) -> Result<Vec<ToolInfo>, AppError> {
             user_dest,
             installed_count,
         });
+    }
+    Ok(out)
+}
+
+/// Open a path in the OS file manager (Finder / Explorer / xdg-open).
+/// Best-effort: returns an error the UI can toast if the path is missing or no
+/// opener is available. Used by the Tools panel's "Reveal" affordance.
+#[tauri::command]
+pub async fn reveal_path(path: String) -> Result<(), AppError> {
+    tokio::task::spawn_blocking(move || {
+        #[cfg(target_os = "macos")]
+        let program = "open";
+        #[cfg(target_os = "windows")]
+        let program = "explorer";
+        #[cfg(all(unix, not(target_os = "macos")))]
+        let program = "xdg-open";
+        std::process::Command::new(program)
+            .arg(&path)
+            .status()
+            .map(|_| ())
+            .map_err(|e| AppError::Io {
+                message: format!("could not open {path}: {e}"),
+            })
+    })
+    .await
+    .map_err(|e| AppError::Io {
+        message: e.to_string(),
+    })?
+}
+
+/// The `<bin> --version`-style probe command for a tool, or `None` when we don't
+/// know one. Best-effort and uneven by nature — GUI tools may not ship a CLI.
+fn version_cmd(tool: Tool) -> Option<(&'static str, &'static [&'static str])> {
+    match tool {
+        Tool::ClaudeCode => Some(("claude", &["--version"])),
+        Tool::Codex => Some(("codex", &["--version"])),
+        Tool::GeminiCli => Some(("gemini", &["--version"])),
+        Tool::Qwen => Some(("qwen", &["--version"])),
+        Tool::Opencode => Some(("opencode", &["--version"])),
+        Tool::Cursor => Some(("cursor", &["--version"])),
+        Tool::Copilot => Some(("gh", &["copilot", "--version"])),
+        _ => None,
+    }
+}
+
+/// First non-empty trimmed line of version output, capped to a sane length.
+fn first_version_line(s: &str) -> Option<String> {
+    s.lines().map(str::trim).find(|l| !l.is_empty()).map(|l| {
+        let capped: String = l.chars().take(48).collect();
+        capped
+    })
+}
+
+async fn probe_version(tool: Tool) -> Option<String> {
+    let (bin, args) = version_cmd(tool)?;
+    let fut = tokio::process::Command::new(bin).args(args).output();
+    match tokio::time::timeout(std::time::Duration::from_secs(3), fut).await {
+        Ok(Ok(o)) if o.status.success() => first_version_line(&String::from_utf8_lossy(&o.stdout))
+            .or_else(|| first_version_line(&String::from_utf8_lossy(&o.stderr))),
+        _ => None,
+    }
+}
+
+/// Best-effort version probe across all supported tools, run concurrently with a
+/// per-tool timeout. A tool whose binary isn't on PATH (or that has no known
+/// version command) comes back as `version: None` — the UI just omits it.
+#[tauri::command]
+pub async fn tool_versions() -> Result<Vec<ToolVersion>, AppError> {
+    let mut handles = Vec::with_capacity(SUPPORTED.len());
+    for tool in SUPPORTED {
+        handles.push(tokio::spawn(
+            async move { ToolVersion {
+                tool,
+                version: probe_version(tool).await,
+            } },
+        ));
+    }
+    let mut out = Vec::with_capacity(handles.len());
+    for h in handles {
+        if let Ok(v) = h.await {
+            out.push(v);
+        }
     }
     Ok(out)
 }

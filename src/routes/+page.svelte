@@ -18,6 +18,8 @@
   import UpdateIndicator from "$lib/components/UpdateIndicator.svelte";
   import PanelLeftClose from "@lucide/svelte/icons/panel-left-close";
   import PanelLeftOpen from "@lucide/svelte/icons/panel-left-open";
+  import ArrowLeft from "@lucide/svelte/icons/arrow-left";
+  import ArrowRight from "@lucide/svelte/icons/arrow-right";
 
   import {
     ui,
@@ -73,6 +75,10 @@
       return;
     }
 
+    // Cmd+[ / Cmd+] : back / forward through nav history (browser convention).
+    if (meta && e.key === "[") { e.preventDefault(); ui.back(); return; }
+    if (meta && e.key === "]") { e.preventDefault(); ui.forward(); return; }
+
     // Cmd+0..4: agency section nav. Matches the sidebar.
     if (meta && ["0","1","2","3","4"].includes(e.key)) {
       e.preventDefault();
@@ -106,10 +112,18 @@
     }
   }
 
+  // Mouse back/forward (buttons 3/4) — the dedicated nav buttons on many mice.
+  function onMouseUp(e: MouseEvent) {
+    if (e.button === 3) { e.preventDefault(); ui.back(); }
+    else if (e.button === 4) { e.preventDefault(); ui.forward(); }
+  }
+
   onMount(() => {
     window.addEventListener("keydown", onKeydown);
+    window.addEventListener("mouseup", onMouseUp);
     return () => {
       window.removeEventListener("keydown", onKeydown);
+      window.removeEventListener("mouseup", onMouseUp);
     };
   });
 </script>
@@ -148,6 +162,28 @@
         <PanelLeftClose size={16} />
       {/if}
     </button>
+    <div class="titlebar-nav" data-tauri-drag-region="false">
+      <button
+        type="button"
+        class="titlebar-btn nav"
+        title="Back (⌘[)"
+        aria-label="Back"
+        disabled={!ui.canBack}
+        onclick={() => ui.back()}
+      >
+        <ArrowLeft size={16} />
+      </button>
+      <button
+        type="button"
+        class="titlebar-btn nav"
+        title="Forward (⌘])"
+        aria-label="Forward"
+        disabled={!ui.canForward}
+        onclick={() => ui.forward()}
+      >
+        <ArrowRight size={16} />
+      </button>
+    </div>
     <h1 class="titlebar-title">{ui.pageTitle}</h1>
     <div class="titlebar-right">
       <UpdateIndicator />
@@ -247,12 +283,40 @@
     outline: 2px solid var(--color-focus, var(--color-brand));
     outline-offset: 2px;
   }
+  /* Back/forward cluster — sits just left of the page title and slides with it. */
+  .titlebar-nav {
+    position: absolute;
+    top: 50%;
+    left: var(--titlebar-title-left);
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    transition: left var(--motion-duration-base, 180ms) var(--motion-ease-out, ease);
+  }
+  /* Inside the flex cluster these are in-flow, not absolutely placed. */
+  .titlebar-btn.nav {
+    position: static;
+    left: auto;
+    transform: none;
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out),
+                color var(--motion-duration-fast) var(--motion-ease-out);
+  }
+  .titlebar-btn:disabled {
+    opacity: 0.32;
+    cursor: default;
+  }
+  .titlebar-btn:disabled:hover {
+    background: transparent;
+    color: var(--color-text-muted);
+  }
   /* Page title also slides so it stays aligned with the start of the
      main content column (just past the sidebar divider). */
   .titlebar-title {
     position: absolute;
     top: 50%;
-    left: var(--titlebar-title-left);
+    /* Shifted right of the back/forward cluster (≈62px wide). */
+    left: calc(var(--titlebar-title-left) + 62px);
     transform: translateY(-50%);
     margin: 0;
     font-size: var(--text-h3);

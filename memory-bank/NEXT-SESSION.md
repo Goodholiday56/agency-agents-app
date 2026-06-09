@@ -33,15 +33,25 @@ registry. **State: the install-management loop is real and working.** Signed + n
   (Claude Code). Report: 157 byte-identical (→ shown `current`), 8 divergent (repo is NEWER → use
   Update), 19 nested (now indexed after the recursion fix).
 
-## ✅ IA RE-ORG — Phase A DONE (2026-06-08); Phase B is the next visible work
-Agents + Library are now ONE three-pane workspace (`AgentsWorkspace.svelte`); `PersonaDiscover.svelte` +
-`AgentLibrary.svelte` are deleted. Detail pane = `PersonaBody` (with a `deploy` snippet) + the
-`DeploymentMatrix` (summary pills + "USE WITH" disclosure; user tools toggle via `Switch.svelte`, project
-tools keep Install/Add-project sub-rows). New `util/platform.ts` adapts ⌘/Ctrl glyphs. Filter lens +
-`ui.openAgents(filter)` deep-links replace the old `library` section. **NEXT: Phase B** — 4 Dashboard
-charts (coverage matrix · health donut · category distribution · per-tool coverage), dependency-free
-SVG/CSS, cells deep-link into the workspace. **Then Phase C** — Windows/Linux titlebar/traffic-light
-degradation, "this device" copy, home-path display (verify `tauri.conf.json` + `TitlebarControls.svelte`).
+## ✅ DONE through 2026-06-09 — unified IA, Dashboard charts, nav, Tools console
+- **Phase A — unified Agents workspace** (`AgentsWorkspace.svelte`; `PersonaDiscover`+`AgentLibrary`
+  deleted). Detail = `PersonaBody` (`deploy` snippet, clickable division pill) + `DeploymentMatrix`
+  (summary pills + "USE WITH" disclosure; user tools = `Switch`, project tools = Install/Add-project).
+- **Phase B — Dashboard charts** (`HealthDonut`, `CoverageMatrix` category×tool, coverage-by-tool bars,
+  category distribution). Dependency-free SVG/CSS; cells/segments deep-link.
+- **Back/forward nav** — `ui` NavLocation history; titlebar ◀▶, ⌘[/], mouse 3/4. `agentsCategory` +
+  `agentsSelected` live in `ui`. **Division deep-links** via `ui.openDivision`. Lens counts narrow to the
+  division; "Not installed" lens added; zero-count lenses/stats auto-hide.
+- **Tools console** — `ToolsView` rebuilt as list/detail two-pane: badges (`util/toolBadge.ts`), health
+  bars, versions, Reveal folder, Default-target Switch, Sync/Track-all/Remove-all, projects. New Rust
+  commands `reveal_path` + `tool_versions` (+ `ToolVersion`). Best-effort version probe is uneven (GUI
+  tools / differently-named CLIs show none) — that's expected.
+- **Dev Dock icon** (macOS, debug-only) set on **`RunEvent::Ready`** (NOT setup — too early). **Icon**
+  redrawn as a macOS squircle (`docs/icon/agency-icon-macos-1024.png` → `npm run tauri icon`).
+
+**NEXT (Phase C, deferred): cross-platform chrome** — Windows/Linux titlebar + traffic-light
+degradation (verify `tauri.conf.json` + `TitlebarControls.svelte`); the rest of the app is already
+platform-clean (⌘/Ctrl via `util/platform.ts`, "this device" copy, Rust reveal/home paths).
 
 ## 🔴 IMMEDIATE backlog (address first)
 1. **Renderer parity for transform tools — LOAD-BEARING, not yet verified.** Everything proven so far

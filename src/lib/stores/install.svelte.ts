@@ -11,7 +11,7 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 
-import type { AgentDiff, InstalledAgent, InstallRecord, InstallState, Tool, ToolInfo } from "$lib/types";
+import type { AgentDiff, InstalledAgent, InstallRecord, InstallState, Tool, ToolInfo, ToolVersion } from "$lib/types";
 
 /** The tools Phase 2 can install to, with display + scope. Mirrors the Rust
     `SUPPORTED` set in `install/mod.rs`. Order = install-menu order. */
@@ -119,6 +119,32 @@ class InstallStore {
     } catch {
       this.tools = [];
     }
+  }
+
+  /** Best-effort detected tool versions (`<bin> --version`), keyed by tool id.
+      Populated by `loadVersions()`; absent/unknown tools just don't appear. */
+  versions: Record<string, string | null> = $state({});
+
+  /** Probe tool versions in the background (slow-ish; spawns processes). */
+  async loadVersions(): Promise<void> {
+    try {
+      const list = await invoke<ToolVersion[]>("tool_versions");
+      const m: Record<string, string | null> = {};
+      for (const v of list) m[v.tool] = v.version;
+      this.versions = m;
+    } catch {
+      /* leave prior versions */
+    }
+  }
+
+  /** Detected version string for a tool, or null if unknown. */
+  versionOf(tool: Tool): string | null {
+    return this.versions[tool] ?? null;
+  }
+
+  /** Reveal a path in the OS file manager (Finder / Explorer / xdg-open). */
+  async revealPath(path: string): Promise<void> {
+    await invoke("reveal_path", { path });
   }
 
   /** All installed rows for an agent across tools/projects. */
