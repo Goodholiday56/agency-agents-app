@@ -46,8 +46,12 @@ registry. **State: the install-management loop is real and working.** Signed + n
   bars, versions, Reveal folder, Default-target Switch, Sync/Track-all/Remove-all, projects. New Rust
   commands `reveal_path` + `tool_versions` (+ `ToolVersion`). Best-effort version probe is uneven (GUI
   tools / differently-named CLIs show none) — that's expected.
-- **Dev Dock icon** (macOS, debug-only) set on **`RunEvent::Ready`** (NOT setup — too early). **Icon**
-  redrawn as a macOS squircle (`docs/icon/agency-icon-macos-1024.png` → `npm run tauri icon`).
+- **macOS 26 Tahoe Liquid Glass icon FIXED.** Tahoe renders from a compiled `Assets.car` (Icon Composer),
+  not `.icns` → `.icns`-only = blank squircle. `actool` (full Xcode only, by path) compiles
+  `docs/icon/AppIcon.icon` → `src-tauri/Assets.car` (in `bundle.resources`) + Tahoe-aware `icon.icns`;
+  `src-tauri/Info.plist` adds `CFBundleIconName=AppIcon` (Tauri merges). Recipe: `docs/icon/
+  README-liquid-glass.md`. **Don't run `npm run tauri icon`** (clobbers the glass icns). Dev Dock hack
+  REMOVED (lib.rs plain `.run()`, objc2 deps gone).
 
 **NEXT (Phase C, deferred): cross-platform chrome** — Windows/Linux titlebar + traffic-light
 degradation (verify `tauri.conf.json` + `TitlebarControls.svelte`); the rest of the app is already

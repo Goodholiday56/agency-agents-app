@@ -172,38 +172,8 @@ pub fn run() {
             install::loadout_export,
             install::loadout_import,
         ])
-        .build(tauri::generate_context!())
-        .expect("error while building tauri application")
-        .run(|_app_handle, _event| {
-            // Dev-only: the unbundled debug binary shows a generic Dock icon.
-            // Set it from the source icon once the app is Ready (doing this in
-            // `setup` is too early — macOS reassigns the default at activation,
-            // overwriting it). Release builds get the icon from the bundle.
-            #[cfg(all(target_os = "macos", debug_assertions))]
-            if let tauri::RunEvent::Ready = _event {
-                set_dev_dock_icon();
-            }
-        });
-}
-
-/// Set the macOS Dock icon at runtime from the bundled source PNG (dev only).
-/// AppKit is already loaded by the windowing layer, so `class!` lookups resolve
-/// at runtime; this runs on the main thread from the run-event loop.
-#[cfg(all(target_os = "macos", debug_assertions))]
-fn set_dev_dock_icon() {
-    use objc2::runtime::AnyObject;
-    use objc2::{class, msg_send};
-    use objc2_foundation::NSString;
-
-    let path = NSString::from_str(concat!(env!("CARGO_MANIFEST_DIR"), "/icons/icon.png"));
-    unsafe {
-        let img: *mut AnyObject = msg_send![class!(NSImage), alloc];
-        let img: *mut AnyObject = msg_send![img, initWithContentsOfFile: &*path];
-        if !img.is_null() {
-            let ns_app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
-            let _: () = msg_send![ns_app, setApplicationIconImage: img];
-        }
-    }
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
 
 // =============================================================

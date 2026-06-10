@@ -331,3 +331,28 @@ Big session on top of the IA re-org. All frontend except the Tools backend comma
 - Verdict: svelte-check 0 err; `npm run build` ✓; `cargo test --lib` 247/0; `cargo check` ✓.
 - **REMAINING:** Phase C (Windows/Linux titlebar/traffic-light degradation) · renderer parity vs
   convert.sh (load-bearing) · uninstall-backup decision · local-runtime target · #8 multi-file renderers.
+
+## 2026-06-09 (later) — macOS 26 Tahoe app icon (LIQUID GLASS) — FIXED + long detour
+The app showed a blank/gray squircle in Finder/Dock. We burned a LOT of time treating it as an `.icns`
+problem (made a squircle, regenerated 8-bit, canonical `iconutil` icns, swapped into the bundle, cleared
+icon caches, lsregister) — the `.icns` was PROVEN byte-correct the whole time (composite-over-red = red
+corners). **ROOT CAUSE: macOS 26 Tahoe renders app icons from a compiled `Assets.car` (Icon Composer
+"Liquid Glass"), not `.icns`. Apps shipping only `.icns` get "icon jail" → blank squircle.** `tauri icon`
+can't make `Assets.car` (tauri#14207/#14979). brew-browser "works" because its full-bleed square art
+survives the legacy path. Web research (9to5Mac gray-box, Apple forums 801181, hendrik-erz.de) nailed it.
+- **THE FIX (reproducible, wired + verified):** `actool` compiles `docs/icon/AppIcon.icon` (Michael's
+  finished Icon Composer build) → `Assets.car` + a Tahoe-aware `AppIcon.icns`. **actool is ONLY in full
+  Xcode, not CLT** — call it by path: `/Applications/Xcode-beta.app/Contents/Developer/usr/bin/actool …
+  --compile … --app-icon AppIcon --include-all-app-icons`. Then: `Assets.car`→`src-tauri/Assets.car`
+  (added to `bundle.resources`); actool's icns→`src-tauri/icons/icon.icns` (legacy fallback);
+  new `src-tauri/Info.plist` with `CFBundleIconName=AppIcon` (Tauri 2 MERGES `src-tauri/Info.plist`).
+  Full recipe in `docs/icon/README-liquid-glass.md`.
+- Verified bundle (unsigned `npm run tauri build --config …signingIdentity:null`): `Contents/Resources/`
+  has BOTH `Assets.car`(2.2MB) + `icon.icns`(72KB); Info.plist has BOTH `CFBundleIconName=AppIcon` +
+  `CFBundleIconFile=icon.icns`. **Dock confirmed showing the live glass icon ("BAM").**
+- **Dev Dock hack REMOVED** (was the source of black-corner/blank confusion): lib.rs back to plain
+  `.run()`, `objc2`/`objc2-foundation` deps dropped. 247/0.
+- GOTCHAS: don't run `npm run tauri icon` after — it overwrites `icon.icns` with a flat non-glass version.
+  Re-run the `actool` step whenever `AppIcon.icon` changes. Tahoe caches icons HARD; if a build looks
+  stale, `lsregister -kill -r -domain local -domain system -domain user` + clear iconservices + restart
+  Dock/Finder.

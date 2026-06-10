@@ -35,18 +35,42 @@ an internal build path the CLI doesn't expose), so author/export via the app:
 4. **Export** → choose the **`.icns`** export (Tahoe-compatible, carries the
    layered glass representation).
 
-## Integration into the build
+## Integration into the build — DONE (2026-06-09, this is what's wired)
 
-Replace the bundled icon with the Icon Composer export:
+macOS 26 Tahoe renders app icons from a **compiled `Assets.car`** (Icon
+Composer's Liquid Glass), not from `.icns`. Shipping only an `.icns` lands the
+app in Tahoe "icon jail" → a blank/gray squircle. `tauri icon` can't produce
+`Assets.car` yet (tauri-apps/tauri#14207, #14979), so we compile it ourselves.
 
-- Drop the exported icon at `src-tauri/icons/icon.icns`.
-- `tauri build` ships it; macOS 26 renders the glass from it.
-- If Icon Composer gives you a `.icon` (not `.icns`), keep it at
-  `src-tauri/icons/AppIcon.icon` and add an `afterBundleCommand` that runs
-  `actool` inside the Xcode build environment to emit `Assets.car` +
-  `AppIcon.icns` into `…/Agency Agents.app/Contents/Resources/`, then set
-  `CFBundleIconName = AppIcon` in the app's Info.plist. (Drop-in `.icns` is
-  simpler — prefer it unless you need per-appearance variants.)
+**1. Compile `AppIcon.icon` → `Assets.car` (+ a Tahoe-aware `AppIcon.icns`):**
+`actool` lives only inside full Xcode (not Command Line Tools), so call it by
+path:
+
+```sh
+ACTOOL="/Applications/Xcode-beta.app/Contents/Developer/usr/bin/actool"   # or Xcode.app
+"$ACTOOL" docs/icon/AppIcon.icon --compile /tmp/iconcar \
+  --platform macosx --minimum-deployment-target 15.0 \
+  --app-icon AppIcon --include-all-app-icons \
+  --output-partial-info-plist /tmp/iconcar/partial.plist
+# → /tmp/iconcar/{Assets.car, AppIcon.icns, partial.plist}
+cp /tmp/iconcar/Assets.car     src-tauri/Assets.car        # shipped via bundle.resources
+cp /tmp/iconcar/AppIcon.icns   src-tauri/icons/icon.icns   # legacy fallback (≤ macOS 25)
+```
+
+**2. Wire it (already committed):**
+- `tauri.conf.json` → `bundle.resources` includes `"Assets.car"` → lands at
+  `Contents/Resources/Assets.car`.
+- `src-tauri/Info.plist` (Tauri 2 merges it) → `CFBundleIconName = AppIcon`.
+- `bundle.icon` still lists `icons/icon.icns` → Tauri sets `CFBundleIconFile`
+  for older macOS. Both paths coexist.
+
+**3. `npm run tauri build`** → Tahoe shows the live glass; older macOS shows the
+icns. Verify: `Contents/Resources/` has BOTH `Assets.car` + `icon.icns`, and
+Info.plist has BOTH `CFBundleIconName` + `CFBundleIconFile`.
+
+> Re-run step 1 whenever `docs/icon/AppIcon.icon` changes. Do NOT run
+> `npm run tauri icon` afterward — it overwrites `icon.icns` with a flat
+> (non-glass, Tahoe-jailed) version.
 
 ## Regenerating the layers from source art
 

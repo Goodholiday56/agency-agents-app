@@ -1,7 +1,16 @@
 # Active Context — Agency Agents
 
-**State**: BUILD. Unified IA + Dashboard charts + back/forward nav + Tools console all DONE. Signed build works.
-**Last updated**: 2026-06-09
+**State**: BUILD. Unified IA + charts + nav + Tools console DONE. macOS 26 Tahoe Liquid Glass icon FIXED.
+**Last updated**: 2026-06-09 (later)
+
+## 🟣 Tahoe app icon (read first if touching icons)
+macOS 26 renders icons from a compiled **`Assets.car`** (Icon Composer Liquid Glass), NOT `.icns` — `.icns`
+-only = blank/gray squircle ("icon jail"). FIXED: `actool` (full Xcode only, by path) compiles
+`docs/icon/AppIcon.icon` → `src-tauri/Assets.car` (in `bundle.resources`) + Tahoe-aware
+`src-tauri/icons/icon.icns`; `src-tauri/Info.plist` adds `CFBundleIconName=AppIcon` (Tauri merges it).
+**Don't run `npm run tauri icon`** (clobbers the glass icns). Full recipe: `docs/icon/README-liquid-glass.md`.
+Dev Dock hack REMOVED (lib.rs plain `.run()`, objc2 deps dropped).
+
 
 ## Current state (read NEXT-SESSION.md for the full picture + IMMEDIATE backlog)
 - **Phase B + nav + Tools (2026-06-09):** Dashboard has 4 dependency-free charts (`HealthDonut`,
