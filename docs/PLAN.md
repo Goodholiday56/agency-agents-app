@@ -1,177 +1,166 @@
-# brew-browser — Plan
+# Agency Agents App Plan
 
-**Date:** 2026-05-23
-**Author:** Michael (with Claude)
-**Goal:** Ship a small, fast, native macOS GUI for Homebrew. Browse installed packages, search the full catalog, install / uninstall / upgrade with live output, snapshot to a Brewfile and restore on a new Mac. MIT-licensed, full source, no telemetry.
-
-## Provenance & ethics
-
-- **Fresh implementation.** This is not derived from or inspired by any specific other project. Both brew-browser and `brew` itself are open source; any similarity in behavior is convergent — both projects are wrappers around the `brew` CLI.
-- **Descriptive name.** "brew-browser" describes what the app does.
+**Product:** Agency Agents  
+**Repo:** `github:msitarzewski/agency-agents-app`  
+**Catalog:** `github:msitarzewski/agency-agents`  
+**Stack:** Tauri 2, Rust, SvelteKit, Svelte 5, TypeScript  
+**License:** MIT
 
 ## Vision
 
-> A native-feel macOS app that lets you browse, search, install, uninstall, upgrade, and snapshot Homebrew packages, with full source code under MIT, no telemetry, no accounts.
+Ship a native app for browsing, installing, and tracking the `agency-agents` catalog across AI coding tools.
 
-## Scope — MVP
+The app should answer three questions clearly:
 
-**In scope:**
-1. List installed formulae + casks (read `brew list --json=v2`)
-2. Search Homebrew package index (`brew search <query>`)
-3. Show package detail (description, version, dependencies — `brew info --json=v2`)
-4. Install / Uninstall / Upgrade with live streaming output
-5. **Snapshot (export):** `brew bundle dump --file=<path>` → save a `Brewfile`
-6. **Restore (import):** `brew bundle install --file=<path>` → install a `Brewfile`
-7. List of saved Brewfiles with create/restore/delete
-8. **Trending packages tab** — fetch `https://formulae.brew.sh/api/analytics/install/30d.json`, display top-N by install count. Real Homebrew-maintained analytics; no scraping; sortable. *(Added 2026-05-23 per spec update.)*
+1. Which agents exist?
+2. Where are they installed?
+3. Are those installed files current, modified, missing, or foreign?
 
-**Explicitly out of scope (MVP):**
-- App settings / preferences (`Brewfile` is the snapshot; we're not capturing per-app config files)
-- Windows/Linux support (brew runs on Linux but Mac-first for demo)
-- Auto-update / signed-DMG distribution (manual `cargo tauri build` for now)
-- Multi-tap management beyond what brew already shows
-- Category browsing / curated "App Store" sections
-- App icons in package list (would require resolving cask metadata; nice-to-have)
+## Current Architecture
 
-## Tech stack
-
-| Layer | Choice | Why |
-|-------|--------|-----|
-| Shell | **Tauri 2.x** | Smallest native footprint, system webview, real macOS app bundle |
-| Frontend | **SvelteKit + Svelte 5 + TypeScript** | Already scaffolded; SPA mode via `adapter-static` |
-| Styling | TBD — Tailwind v4 or plain CSS | Pick during Phase 1 based on actual layout needs |
-| Backend | **Rust (Tauri commands)** | Shell out to `brew`, return typed JSON to frontend |
-| Inference of brew | **`brew` CLI itself** | We do NOT reimplement Homebrew logic. We're a respectful frontend. |
-| Analytics for trending | **`formulae.brew.sh` JSON API** | Official Homebrew-maintained, no key required |
-| License | **MIT** (locked 2026-05-23) | Most permissive and most recognizable OSI license; lowest contributor friction (no CLA needed); user retains copyright so monetization options (paid binaries, App Store, support) remain open. |
-| Distribution | **`cargo tauri build` → unsigned `.dmg`** for demo; eventual `brew tap` if published | |
-
-## Architecture sketch
-
-```
-┌────────────────────────────────────────┐
-│  Svelte frontend (in WKWebView)        │
-│  - PackageList (formulae + casks)      │
-│  - SearchBar                           │
-│  - PackageDetail panel                 │
-│  - ActionConsole (streams stdout)      │
-│  - BrewfileManager                     │
-│  - TrendingTab                         │
-└──────────────┬─────────────────────────┘
-               │ invoke('brew_list'), etc. (Tauri IPC)
-┌──────────────▼─────────────────────────┐
-│  Rust backend (Tauri commands)         │
-│  - brew_list() -> PackageList          │
-│  - brew_search(q) -> Vec<PackageHit>   │
-│  - brew_info(name) -> PackageDetail    │
-│  - brew_install/uninstall/upgrade()    │
-│      (streams via event channel)       │
-│  - brew_bundle_dump(path)              │
-│  - brew_bundle_install(path)           │
-│  - list_brewfiles() -> Vec<Brewfile>   │
-│  - fetch_trending(window) -> ...       │
-└──────────────┬─────────────────────────┘
-               │ Command::new("brew") + reqwest
-┌──────────────▼─────────────────────────┐
-│  brew CLI (Homebrew itself)            │
-│  formulae.brew.sh/api/analytics/...    │
-└────────────────────────────────────────┘
+```text
+Svelte UI
+  Agents workspace
+  Tools panel
+  Dashboard
+  Loadouts
+  Settings
+      |
+      | typed Tauri IPC
+      v
+Rust backend
+  corpus/     catalog source, refresh, indexing
+  render/     deterministic tool renderers
+  install/    write, uninstall, backups, ledger, reconcile
+  github/     optional OAuth + GitHub API features
+  settings/   local settings and network gates
+      |
+      v
+Local filesystem
+  app state
+  agency-agents clone/baseline
+  tool-specific agent directories
 ```
 
-## Steps
+## MVP Scope
 
-### Phase 0 — Scaffold ✅ DONE 2026-05-23
-- `npm create tauri-app@latest . -m npm -t svelte-ts --identifier dev.openbrew.browser -y -f --tauri-version 2`
-- Renamed productName/Cargo package/package.json to `brew-browser`
-- Replaced default README with the product README
-- `cargo check` clean
+In scope:
 
-### Phase 1 — Read-only Homebrew browser
-- Rust: `brew_list()` command → exec `brew list --formula --json=v2` + `--cask --json=v2`, parse, return
-- Svelte: `<PackageList>` showing installed packages, formula/cask toggle, basic search filter
-- Rust: `brew_info(name)` command
-- Svelte: `<PackageDetail>` panel on click
+1. Browse the `agency-agents` catalog by division, search, and detail.
+2. Select a bundled, managed, or user-cloned catalog source.
+3. Render supported tools natively in Rust.
+4. Install and uninstall supported one-file-per-agent targets.
+5. Track local install state with a ledger.
+6. Reconcile disk state into current, outdated, modified, removed, and foreign.
+7. Back up divergent files before removal or overwrite.
+8. Show tool coverage and project targets.
+9. Build signed macOS artifacts and cross-platform development builds.
 
-### Phase 2 — Search the index
-- Rust: `brew_search(query)` → exec `brew search <query>`, parse stdout
-- Svelte: search-mode toggle (installed vs. all-of-homebrew)
+Out of scope for the current release:
 
-### Phase 3 — Actions with streaming
-- Rust: `brew_install/uninstall/upgrade()` using `tokio::process` with stdout/stderr forwarded to Tauri event channel
-- Svelte: `<ActionConsole>` subscribes to event channel, live output, confirm-destructive-actions
-- Refresh list after action completes
+- executing agents
+- arbitrary third-party plugin execution
+- telemetry
+- cloud sync
+- paid tiers
+- unverified install paths
+- multi-file/aggregate renderers unless explicitly implemented and tested
 
-### Phase 4 — Brewfile snapshot/restore
-- Rust: `brew_bundle_dump(path)` and `brew_bundle_install(path)`
-- Svelte: `<BrewfileManager>` — list of saved files in `~/Library/Application Support/brew-browser/brewfiles/`, create/restore/delete/export
-- "Set up new Mac" affordance with pre-flight check
+## Supported Renderer Set
 
-### Phase 5 — Demo polish + build artifact
-- Placeholder app icon
-- README polish: screenshot, what it does/doesn't, MIT badge, open-source posture block
-- CONTRIBUTING.md skeleton
-- `cargo tauri build` produces a working .dmg
+Current app-supported targets:
 
-### Phase 6 — Trending tab (per spec update 2026-05-23)
-- Rust: `fetch_trending(window: "30d" | "90d" | "365d")` → reqwest HTTP GET to `formulae.brew.sh/api/analytics/install/<window>.json`
-- Svelte: `<TrendingTab>` — sortable list of top-N packages by install count, click-to-install affordance
-- Cache for ~1h in memory (don't hammer formulae.brew.sh)
+- Claude Code
+- Codex
+- Gemini CLI
+- GitHub Copilot
+- Qwen Code
+- Cursor
+- opencode
 
-## Reuse strategy
+Known AA repo targets that still need app support:
 
-- **Don't** reimplement `brew search` / install logic — shell out
-- **Don't** parse `brew` output formats — use `--json=v2` everywhere available
-- **Don't** invent a snapshot format — use `Brewfile` (Homebrew's own)
-- **Don't** build auth / accounts / cloud sync (anti-feature)
-- **Don't** scrape — use `formulae.brew.sh` JSON APIs that Homebrew itself publishes
+- Antigravity
+- Aider
+- Windsurf
+- OpenClaw
+- Kimi
 
-## Risks
+## Near-Term Plan
 
-| Risk | Mitigation |
-|------|-----------|
-| Tauri CLI install hits Xcode CLT issues | Beast has dev setup; rustc/cargo confirmed; ✅ `cargo check` passed |
-| `brew search` is slow on first call | Loading state; cache results for the session |
-| `brew install` of a cask requires sudo/prompts | Surface stdout/stderr verbatim; document the limitation |
-| User actions could break their brew state | Confirm dialogs for destructive ops; output is always visible |
-| Concurrent brew invocations may conflict | Serialize via Rust `tokio::sync::Mutex` |
-| `brew bundle dump` runs slow on machines with many casks | Progress spinner; warn on first run |
-| Tauri sandbox blocks shell execution | Explicit allowlist in `tauri.conf.json` for `brew` |
-| `formulae.brew.sh` rate-limits trending requests | Cache in memory ~1h; respect any 429 |
+### Phase A: Core Workspace
 
-## Tests
+Done. Unified Agents/Library workspace with deployment matrix, search, filters, and persistent detail panel.
 
-- **Manual smoke test in dev mode:**
-  - List view loads installed packages
-  - Search returns results
-  - Click a package → detail panel populated
-  - Install a tiny test formula (e.g., `tree`)
-  - Uninstall the same
-  - Dump a Brewfile, inspect, restore from it (no-op since nothing changed)
-  - Trending tab loads top 20 packages, install count visible
-- **Build test:** `cargo tauri build` produces a working `.dmg`, opens, runs
+### Phase B: Dashboard And Tools Console
 
-## Open-source posture
+Done. Coverage charts, health summaries, category distribution, tool list/detail console, and deep links.
 
-The README must make these visible above the fold:
-- **MIT License** badge
-- **Source code is right here** (link to `src/`, `src-tauri/`)
-- **No EULA, no telemetry, no account required**
-- **`brew tap` distribution available** but `cargo tauri build` works for anyone who wants to build from source
-- **Contributions welcome** — `CONTRIBUTING.md`, issue templates
+### Phase C: Cross-Platform Correctness
 
-## Definition of done (for the demo)
+Mostly done. macOS retains overlay titlebar and vibrancy. Windows/Linux use opaque native decorated windows. Remaining work is repeatable build automation and native runtime verification on available VMs.
 
-- [x] Phase 0 — Scaffold + LICENSE + README + cargo check passes
-- [ ] Phase 1 — Read-only browser
-- [ ] Phase 2 — Search
-- [ ] Phase 3 — Install/uninstall/upgrade
-- [ ] Phase 4 — Brewfile snapshot/restore
-- [ ] Phase 5 — Polish + build artifact
-- [ ] Phase 6 — Trending tab
-- [ ] Repo ready to push to GitHub when you say go
+### Phase D: Tool Target Manifest
 
-## What this is NOT
+Next recommended architecture step.
 
-- Not a Homebrew replacement
-- Not a long-running product — a focused MVP that can be polished later
-- Not optimized for million-package scale; designed for individual user libraries (~50-500 packages)
+Create a manifest in the AA repo that declares:
+
+- tool ID
+- label
+- vendor
+- support status
+- scopes
+- default paths
+- env overrides
+- output format
+- renderer kind
+- authoritative docs/source links
+- verification status
+
+Then:
+
+- update `agency-agents/scripts/install.sh` to consume it for tool metadata and paths
+- add an audit script that checks manifest drift
+- update this app's Tools panel to consume generated manifest metadata
+- keep Rust writes limited to renderers the app can safely implement and test
+
+### Phase E: Multi-File Renderers
+
+Implement special output shapes only after their path semantics are verified:
+
+- Aider `CONVENTIONS.md`
+- Windsurf `.windsurfrules`
+- OpenClaw workspace directory
+- Antigravity skill directories
+- Kimi if current docs validate an installable custom-agent format
+
+## Quality Gates
+
+Before release:
+
+```sh
+cargo fmt --check --manifest-path src-tauri/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml --lib
+npm run check
+npm run build
+npm run build:phase-c
+```
+
+Renderer parity should be checked against the active AA clone:
+
+```sh
+AGENCY_AGENTS_PARITY_ROOT=/Users/michael/Software/AgentLand/agency-agents \
+cargo test --manifest-path src-tauri/Cargo.toml upstream_convert_sh_is_byte_identical_for_transform_tools -- --ignored
+```
+
+## Definition Of Done For 1.0
+
+- public docs describe Agency Agents, not the inherited source app
+- app name, bundle ID, updater host, and release artifacts are consistent
+- supported install paths have primary-source verification
+- renderer parity passes for supported transform tools
+- uninstall is recoverable for modified files
+- macOS signed build is verified
+- Windows/Linux builds are produced or explicitly marked unavailable
+- Memory Bank task docs are updated after human approval

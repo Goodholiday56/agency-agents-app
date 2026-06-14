@@ -1,69 +1,77 @@
 # Security Policy
 
-Thanks for taking the time to look. This project takes security seriously, and reports — large or small — are welcome.
+Thanks for taking the time to look. Agency Agents writes files into developer-tool configuration directories, so security reports are welcome.
 
-## Supported versions
+## Supported Versions
 
 | Version | Supported |
 |---------|-----------|
 | `0.1.x` | Yes       |
 
-This is an early-stage project. Once a `0.2.x` line exists, the previous minor will receive security fixes for 90 days after the new minor ships.
+This is a pre-1.0 project. Support windows may change as release packaging stabilizes.
 
-## Reporting a vulnerability
+## Reporting A Vulnerability
 
 Email **msitarzewski@gmail.com** with:
 
-- A clear description of the issue and the impact you believe it has
-- Steps to reproduce, or a proof-of-concept if you have one
-- The version / commit you tested against
-- Your name or handle if you'd like credit (optional)
+- a clear description of the issue
+- impact
+- steps to reproduce or proof of concept
+- version or commit tested
+- name/handle for credit, if desired
 
-Please do **not** open a public GitHub issue for security reports. Once a fix is shipped, the original report can be cross-linked from the public changelog.
+Please do not open a public GitHub issue for security reports.
 
-## Response time
+## Response Time
 
-This is a side project, so responses are best-effort:
+Best effort:
 
-- **Acknowledgement:** within 7 days of receipt
-- **Initial assessment:** within 14 days
-- **Fix or mitigation plan:** within 30 days for high/critical findings
-
-If a report sits unanswered past these windows, a polite follow-up is welcome.
+- acknowledgement within 7 days
+- initial assessment within 14 days
+- fix or mitigation plan within 30 days for high/critical findings
 
 ## Scope
 
-**In scope:**
+In scope:
 
-- Remote code execution in the app or any of its IPC commands
-- Privilege escalation
-- Data exfiltration from the local machine
-- Cross-site scripting (XSS) in the webview
-- SSRF or other outbound-request abuse originating from the app
-- Path traversal, arbitrary file read/write through any Tauri command
-- Cache poisoning of the icon or trending cache
-- Bypass of the URL-scheme allowlist on the homepage opener
+- remote code execution in the app or IPC commands
+- arbitrary file read/write through Tauri commands
+- path traversal in install, backup, catalog, or import/export paths
+- unsafe overwrite or uninstall behavior
+- bypass of modified-file backup protections
+- XSS in the webview
+- token leakage from GitHub OAuth storage or IPC
+- SSRF or unexpected outbound requests
+- updater signature or artifact verification bypass
+- incorrect tool path handling that writes outside documented destinations
 
-**Out of scope:**
+Out of scope:
 
-- Vulnerabilities in `brew` itself — report those to [Homebrew](https://github.com/Homebrew/brew/security/policy)
-- Vulnerabilities in third-party tap content, formulae, or casks installed via this app
-- Vulnerabilities in macOS, WebKit, or other system components
-- Attacks that require an already-compromised local account (same-UID processes can do anything the user can)
-- Social-engineering attacks
-- Missing security headers on `formulae.brew.sh` (not our service)
-- Issues that require physical access to an unlocked machine
+- vulnerabilities in third-party AI coding tools
+- malicious agent content in a user-selected catalog clone
+- vulnerabilities in macOS, Windows, Linux, WebKit, or system components
+- social-engineering attacks
+- attacks requiring an already-compromised local account
+- bugs in the upstream `agency-agents` repo that do not affect app install/write behavior
 
-## Disclosure policy
+## Disclosure Policy
 
-Coordinated disclosure, 90-day default. If a fix takes longer than 90 days, the reporter and the maintainer agree on an extended timeline in writing before the embargo expires. If no fix is plausible within 90 days, the reporter is free to publish after that window closes.
+Coordinated disclosure, 90-day default. If a fix takes longer, the reporter and maintainer can agree on an extension before the embargo expires.
 
-A current security audit lives at [`memory-bank/security.md`](./memory-bank/security.md) and may answer your question before you write the email.
+## Security Posture
 
-## Hall of fame
+- Typed Tauri IPC.
+- No frontend arbitrary shell bridge.
+- Deterministic renderers for supported tools.
+- Local ledger records app-managed writes.
+- Modified installed files are backed up before destructive operations.
+- GitHub token is stored in the platform keychain and is not returned to the frontend.
+- Network features are gated by settings and feature boundaries.
 
-Reporters who have found and responsibly disclosed security issues:
+## Hall Of Fame
 
-<!-- First reporter goes here. Add as: Name (handle) — short description, fix in commit/PR link -->
+Reporters who have responsibly disclosed security issues:
 
-*(empty — be the first)*
+<!-- First reporter goes here. Add as: Name (handle) - short description, fix in commit/PR link -->
+
+*(empty - be the first)*

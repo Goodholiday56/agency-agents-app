@@ -1,271 +1,111 @@
-PHILOSOPHY.md
+# Agency Agents Philosophy
 
-brew-browser Philosophy
+Agency Agents exists because useful AI-agent catalogs should be easy to inspect, install, and maintain without hiding what is being written to a developer's machine.
 
-brew-browser exists because modern developer tools are increasingly asking users to trade transparency for convenience.
+The app is intentionally:
 
-We reject that trade.
+- local-first
+- deterministic
+- inspectable
+- reversible
+- respectful of user agency
+- aligned with open agent tooling
 
-This application is intentionally designed to remain:
+## 1. The Catalog Remains The Source
 
-* local-first
-* inspectable
-* deterministic
-* respectful of user agency
-* aligned with the Unix and Homebrew ecosystem
+The app does not replace the [`agency-agents`](https://github.com/msitarzewski/agency-agents) repo. It gives that repo a native app surface.
 
-brew-browser is not trying to replace Homebrew.
+The catalog source is either bundled, managed locally, or chosen by the user. Agent source remains plain Markdown. Tool-specific outputs are deterministic renders of that source.
 
-It is a visibility and control layer built on top of Homebrew.
+## 2. The App Tracks What The Tools Do Not
 
-The terminal remains the source of truth.
+Most AI coding tools read agent files from config directories, but they do not expose a shared install database.
 
-⸻
+Agency Agents fills that gap with a local ledger:
 
-Principles
+- what agent was installed
+- where it was written
+- which tool and scope it belongs to
+- which corpus hash it came from
+- which rendered bytes the app produced
 
-1. Homebrew Comes First
+That ledger is the basis for update detection, drift protection, recoverable uninstall, and project-level visibility.
 
-Homebrew already solves package management extremely well.
+## 3. Determinism Over Magic
 
-brew-browser does not attempt to abstract Homebrew into a proprietary ecosystem, alternate package manager, or closed platform.
+An install should be explainable:
 
-Everything ultimately maps back to standard Homebrew behavior:
+1. read canonical source
+2. render a known tool format
+3. write to a known destination
+4. record source and rendered hashes
+5. reconcile by re-rendering and comparing bytes
 
-* formulae
-* casks
-* services
-* taps
-* Brewfiles
-* launchctl-managed processes
+No hidden prompt mutation, no runtime LLM dependency, no invisible file stamping.
 
-The goal is understanding and visibility — not enclosure.
+## 4. Local-First By Default
 
-⸻
+The app should be useful without accounts or background services.
 
-2. Local-First by Default
+Network use is explicit:
 
-brew-browser should function without requiring:
+- refresh the `agency-agents` catalog
+- sign in to GitHub
+- call GitHub-backed features
+- check for app updates
 
-* accounts
-* cloud sync
-* telemetry
-* subscriptions
-* remote execution
-* behavioral tracking
+Core browsing, install tracking, reconciliation, and uninstall behavior operate locally.
 
-Your machine is your machine.
+## 5. No Telemetry
 
-Most functionality operates entirely locally using:
+Agency Agents does not collect:
 
-* the Homebrew CLI
-* local metadata
-* bundled indexes
-* local filesystem inspection
+- analytics
+- click tracking
+- installed-agent inventory
+- tool usage metrics
+- device fingerprints
+- behavioral profiles
 
-Remote network requests are minimized, explicit, and controllable.
+There are no hidden analytics SDKs and no product-improvement event stream.
 
-⸻
+## 6. Security Is Product Behavior
 
-3. No Telemetry
+The app writes files into developer tooling directories. That demands conservative behavior.
 
-brew-browser does not collect:
+Rules:
 
-* analytics
-* usage metrics
-* click tracking
-* package installation behavior
-* device fingerprints
-* behavioral profiles
+- deterministic renderers only
+- no arbitrary shell bridge from the frontend
+- no production mock data
+- no destructive uninstall of modified files without backup
+- no network path without a visible feature reason
+- no pretending an unverified tool path is authoritative
 
-There are no hidden analytics SDKs.
+## 7. Respect Tool-Specific Reality
 
-There are no background event streams.
+Different tools have different agent formats. Some are one-file-per-agent. Some are project-scoped. Some use aggregate files. Some require CLI registration.
 
-There is no user surveillance disguised as “product improvement.”
+The app should expose that honestly instead of forcing every integration into the same shape.
 
-If something requires network access, it should be understandable and inspectable.
+For unsupported or unverified tools, the UI should say so.
 
-⸻
+## 8. Quiet Native UX
 
-4. Transparency Over Magic
+The interface should favor:
 
-Modern software increasingly hides behavior behind opaque systems:
-
-* silent network requests
-* AI-generated behavior
-* hidden recommendation systems
-* undisclosed ranking algorithms
-* dark-pattern UX
-
-brew-browser intentionally avoids this model.
-
-If the application:
-
-* categorizes packages
-* surfaces trends
-* performs discovery
-* displays metadata
-
-…those systems should be explainable.
-
-Semantic package categorization is generated offline using small language models, reviewed and normalized, then bundled into application releases as static metadata.
-
-No runtime AI dependency exists inside the app.
-
-⸻
-
-5. Deterministic UX
-
-Developer tools should behave predictably.
-
-brew-browser favors:
-
-* explicit actions
-* stable interfaces
-* understandable state
-* reversible operations
-* inspectable outputs
+- dense information
+- clear state
+- keyboard navigation
+- low ceremony
+- visible file paths
+- recoverable operations
 
 Over:
 
-* probabilistic behavior
-* engagement loops
-* recommendation manipulation
-* “smart” automation that obscures system state
+- gamification
+- engagement loops
+- opaque recommendations
+- ornamental dashboards
 
-The application should help users understand their system — not hide it.
-
-⸻
-
-6. Security Is a Feature
-
-Convenience is not an excuse for unsafe architecture.
-
-brew-browser intentionally avoids:
-
-* arbitrary shell interpolation from the frontend
-* embedded remote execution layers
-* unnecessary privilege escalation
-* opaque plugin systems
-
-The application uses typed Rust command boundaries rather than unrestricted shell bridging.
-
-Security decisions are made conservatively, especially around:
-
-* filesystem access
-* remote requests
-* icon fetching
-* service management
-* authentication flows
-
-⸻
-
-7. Respect the Ecosystem
-
-brew-browser exists because of the work of:
-
-* Homebrew maintainers
-* formula maintainers
-* open-source developers
-* Unix tooling communities
-
-This project is not an attempt to “own” that ecosystem.
-
-The intent is to make the ecosystem:
-
-* easier to understand
-* easier to navigate
-* easier to manage
-* easier to trust
-
-Without compromising the values that made it valuable in the first place.
-
-⸻
-
-What brew-browser Is Not
-
-brew-browser is not:
-
-* an App Store
-* a social platform
-* a telemetry business
-* an engagement engine
-* a recommendation algorithm company
-* a SaaS product disguised as desktop software
-* a closed wrapper around open infrastructure
-
-It is a local utility application.
-
-That distinction matters.
-
-⸻
-
-Design Philosophy
-
-The interface intentionally favors:
-
-* information density
-* clarity
-* restrained visuals
-* operational visibility
-* low cognitive overhead
-
-Over:
-
-* decorative complexity
-* dashboard theater
-* artificial gamification
-* attention extraction
-
-The design goal is calm competence.
-
-⸻
-
-AI Usage
-
-AI is used as infrastructure, not spectacle.
-
-Examples:
-
-* semantic categorization pipelines
-* metadata enrichment
-* offline indexing workflows
-
-AI is not used for:
-
-* user surveillance
-* behavioral ranking
-* opaque runtime decisions
-* engagement optimization
-
-The best AI systems often disappear into the product entirely.
-
-⸻
-
-Long-Term Direction
-
-brew-browser aims to become a trustworthy local systems console for the Homebrew ecosystem:
-
-* package visibility
-* service management
-* storage awareness
-* reproducible environments
-* snapshotting
-* discovery
-* operational diagnostics
-
-Without compromising:
-
-* transparency
-* local ownership
-* determinism
-* user trust
-
-⸻
-
-License
-
-MIT.
-
-Because users should own the software running on their machines.
+Agency Agents should make the user's agent setup easier to understand, not harder.
