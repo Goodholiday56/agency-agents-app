@@ -35,8 +35,8 @@
 #          }
 #        }
 #   6. Echoes (but does NOT execute) the rsync command the user runs
-#      to publish the manifest to brew-browser.zerologic.com via
-#      umacbookpro:Sites/brew-browser/updater.json. Publishing is a
+#      to publish the manifest to agency-agents-app.zerologic.com via
+#      umacbookpro:Sites/agency-agents-app/updater.json. Publishing is a
 #      deliberate manual step.
 #
 # What it does NOT do:
@@ -85,10 +85,10 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 # paths. Filenames are fixed (no version stamp) inside `bundle/macos/`;
 # we upload to GitHub Releases under versioned names so the manifest
 # URL is unambiguous.
-ARTIFACT_PATH="$REPO_ROOT/src-tauri/target/release/bundle/macos/brew-browser.app.tar.gz"
+ARTIFACT_PATH="$REPO_ROOT/src-tauri/target/release/bundle/macos/Agency Agents.app.tar.gz"
 SIGNATURE_FILE="${ARTIFACT_PATH}.sig"
 # Versioned name used in the published GitHub Release asset URL.
-ARTIFACT_RELEASE_NAME="brew-browser_${VERSION}_aarch64.app.tar.gz"
+ARTIFACT_RELEASE_NAME="Agency_Agents_${VERSION}_aarch64.app.tar.gz"
 DIST_DIR="$REPO_ROOT/dist"
 MANIFEST_PATH="$DIST_DIR/updater.json"
 
@@ -105,7 +105,7 @@ if [[ ! -f "$SIGNATURE_FILE" ]]; then
     echo "error: updater signature not found at $SIGNATURE_FILE" >&2
     echo "  The Tauri bundler produces this when TAURI_SIGNING_PRIVATE_KEY[_PATH]" >&2
     echo "  + TAURI_SIGNING_PRIVATE_KEY_PASSWORD are set during 'npm run tauri build'." >&2
-    echo "  Source ~/.config/brew-browser/signing.env, then re-run the build." >&2
+    echo "  Source ~/.config/agency-agents-app/signing.env, then re-run the build." >&2
     exit 2
 fi
 
@@ -145,12 +145,12 @@ mkdir -p "$DIST_DIR"
 # the manifest generator and the release notes editorial step separate
 # is the simpler shape than wiring CHANGELOG parsing here.
 PUB_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-URL="https://github.com/msitarzewski/brew-browser/releases/download/v${VERSION}/${ARTIFACT_RELEASE_NAME}"
+URL="https://github.com/msitarzewski/agency-agents-app/releases/download/v${VERSION}/${ARTIFACT_RELEASE_NAME}"
 
 cat > "$MANIFEST_PATH" <<EOF
 {
   "version": "${VERSION}",
-  "notes": "See https://github.com/msitarzewski/brew-browser/releases/tag/v${VERSION} for release notes.",
+  "notes": "See https://github.com/msitarzewski/agency-agents-app/releases/tag/v${VERSION} for release notes.",
   "pub_date": "${PUB_DATE}",
   "platforms": {
     "darwin-aarch64": {
@@ -171,12 +171,12 @@ echo "  pub_date:   $PUB_DATE"
 echo "  signature:  $(wc -c < "$SIGNATURE_FILE" | tr -d ' ') bytes from $SIGNATURE_FILE"
 echo ""
 echo "next steps (run manually):"
-echo "  1. rsync -av $MANIFEST_PATH umacbookpro:Sites/brew-browser/updater.json"
+echo "  1. rsync -av $MANIFEST_PATH umacbookpro:Sites/agency-agents-app/updater.json"
 echo "  2. gh release create v${VERSION} \\"
-echo "       src-tauri/target/release/bundle/dmg/brew-browser_${VERSION}_aarch64.dmg \\"
+echo "       src-tauri/target/release/bundle/dmg/Agency\\ Agents_${VERSION}_aarch64.dmg \\"
 echo "       $ARTIFACT_PATH#${ARTIFACT_RELEASE_NAME} \\"
 echo "       --notes-file <release-notes.md>"
 echo ""
 echo "verify before publishing:"
 echo "  shasum -a 256 $ARTIFACT_PATH"
-echo "  curl -s https://brew-browser.zerologic.com/updater.json | jq"
+echo "  curl -s https://agency-agents-app.zerologic.com/updater.json | jq"

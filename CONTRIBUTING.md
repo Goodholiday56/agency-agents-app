@@ -1,141 +1,163 @@
-# Contributing to brew-browser
+# Contributing to Agency Agents
 
-Thanks for considering a contribution. This project is small, opinionated, and deliberately open. The bar for landing changes is "does it match the patterns already here and not break anything," not "have you signed paperwork."
+Thanks for considering a contribution. This project is small, opinionated, and open. The bar for landing changes is straightforward: match the existing architecture, keep changes focused, and verify them.
 
 ## TL;DR
 
-1. Fork the repo, create a topic branch off `main`.
-2. Make your change. Keep it small and focused.
-3. Run `cargo test` and `npm run check` before pushing.
-4. Open a PR with a short description of what changed and why.
+1. Fork the repo and create a topic branch off `main`.
+2. Make a focused change.
+3. Run the relevant checks.
+4. Open a PR with what changed, why, and what you tested.
 
-**No CLA. No rights assignment.** Your contributions remain yours, licensed under [MIT](./LICENSE) to match the project. By opening a PR you confirm you wrote the change or have the right to contribute it under that license.
+No CLA. No rights assignment. Contributions remain yours, licensed under [MIT](./LICENSE) to match the project.
 
-## Dev setup
+## Dev Setup
 
-Prereqs:
+Prerequisites:
 
-- [Rust](https://rustup.rs/) (stable, edition 2021+)
+- [Rust](https://rustup.rs/) stable
 - [Node.js 22+](https://nodejs.org/) and npm
-- [Homebrew](https://brew.sh/) itself (the app shells out to `brew`)
-- Xcode Command Line Tools: `xcode-select --install`
+- Xcode Command Line Tools on macOS
+- Full Xcode only if you regenerate the macOS Liquid Glass icon assets
 
 Loop:
 
 ```sh
-git clone https://github.com/<your-fork>/brew-browser
-cd brew-browser
+git clone https://github.com/<your-fork>/agency-agents-app
+cd agency-agents-app
 npm install
-npm run tauri dev      # full app with HMR
-npm run check          # svelte-check + tsc
-cargo test --manifest-path src-tauri/Cargo.toml
+npm run tauri dev
+npm run check
+cargo test --manifest-path src-tauri/Cargo.toml --lib
 ```
 
-`npm run tauri build` produces a `.dmg` under `src-tauri/target/release/bundle/` if you want to test a real artifact.
+The app uses the `agency-agents` catalog. For local catalog testing, use an existing clone or create one at:
 
-## Project structure
-
-A quick map. The canonical, always-up-to-date version lives in [`memory-bank/toc.md`](./memory-bank/toc.md).
-
+```text
+~/Software/AgentLand/agency-agents
 ```
-brew-browser/
-├── src/                            Svelte 5 + TS frontend
-│   ├── lib/
-│   │   ├── components/             18 Svelte components (Library, Sidebar, Modal, ActionDrawer, …)
-│   │   ├── stores/                 7 .svelte.ts stores (packages, search, activity, env, …)
-│   │   ├── styles/                 OKLCH tokens, reset, typography
-│   │   ├── api.ts                  typed invoke() wrappers for all backend commands
-│   │   └── types.ts                TS mirrors of the Rust DTOs
-│   └── routes/                     SvelteKit SPA entry
+
+## Project Structure
+
+```text
+agency-agents-app/
+├── src/                         Svelte 5 + TypeScript frontend
+│   ├── lib/components/          app surfaces and shared UI
+│   ├── lib/stores/              Svelte stores
+│   ├── lib/styles/              design tokens and global CSS
+│   └── routes/                  SvelteKit SPA entry
 ├── src-tauri/
 │   ├── src/
-│   │   ├── lib.rs                  Tauri Builder + invoke_handler wiring
-│   │   ├── error.rs                BrewError + From impls
-│   │   ├── state.rs                AppState, job table, write mutex
-│   │   ├── types.rs                shared DTOs (Package, PackageList, …)
-│   │   ├── brew/                   exec / parse / paths helpers
-│   │   ├── commands/               one file per command group
-│   │   └── trending/               reqwest client + 1h cache
-│   ├── tests/                      integration tests (ignored by default)
-│   ├── Cargo.toml
-│   ├── tauri.conf.json
-│   └── capabilities/default.json
-├── memory-bank/                    living design docs (read these before any non-trivial change)
-├── docs/                           BUILD instructions, PLAN.md, PHILOSOPHY.md, release-notes/, icon/, screenshots/
-├── LICENSE                         MIT
+│   │   ├── corpus/              catalog source, refresh, indexing
+│   │   ├── render/              deterministic per-tool renderers
+│   │   ├── install/             writes, ledger, reconciliation
+│   │   ├── commands/            Tauri command groups
+│   │   ├── github/              optional GitHub auth/API integration
+│   │   └── types.rs             shared DTOs
+│   ├── capabilities/
+│   └── tauri.conf.json
+├── memory-bank/                 living design/context docs
+├── docs/                        build, plan, philosophy, icons, release notes
+├── tools/                       local build/release/support tooling
 └── README.md
 ```
 
-## How to add a Tauri command
+Read [memory-bank/projectbrief.md](./memory-bank/projectbrief.md), [memory-bank/systemPatterns.md](./memory-bank/systemPatterns.md), and [memory-bank/NEXT-SESSION.md](./memory-bank/NEXT-SESSION.md) before non-trivial changes.
 
-The pattern is documented in [`memory-bank/systemPatterns.md`](./memory-bank/systemPatterns.md) (§1–10) and the full command surface lives in [`memory-bank/backendApi.md`](./memory-bank/backendApi.md). Short version:
+## How To Add Backend Behavior
 
-1. Add the typed DTO to `src-tauri/src/types.rs` with `#[derive(Serialize, Deserialize)]` and `#[serde(rename_all = "camelCase")]`.
-2. Add the command in the appropriate file under `src-tauri/src/commands/` as `async fn` returning `Result<T, BrewError>`.
-3. Register it in the `tauri::generate_handler!` list in `src-tauri/src/lib.rs`.
-4. Mirror the TS type in `src/lib/types.ts` and add a typed wrapper in `src/lib/api.ts`.
-5. Add a unit test next to the parser if you introduced one; add an integration test under `src-tauri/tests/` (gated behind `#[ignore]`) if it shells out.
+1. Add or update typed DTOs in `src-tauri/src/types.rs`.
+2. Add backend logic in the relevant module.
+3. Register new Tauri commands in `src-tauri/src/lib.rs` if needed.
+4. Mirror TypeScript types in `src/lib/types.ts`.
+5. Add store/API/UI integration in the frontend.
+6. Add focused tests.
 
-If your command mutates brew state, acquire `state.brew_write_lock` for the duration of the child process. Reads bypass the lock.
+For install behavior, preserve the existing safety model:
 
-## How to add a Svelte component
+- render deterministically
+- write atomically
+- record source and rendered hashes
+- back up divergent files before destructive changes
+- do not modify files outside approved destinations
 
-The component conventions are in [`memory-bank/designSystem.md`](./memory-bank/designSystem.md) and the runes / store patterns are in [`memory-bank/systemPatterns.md`](./memory-bank/systemPatterns.md).
+## How To Add Tool Support
 
-1. Use Svelte 5 runes (`$state`, `$derived`, `$effect`) — no legacy `let` reactivity.
-2. Pull data from the relevant store in `src/lib/stores/` rather than re-invoking the backend.
-3. Use the OKLCH design tokens in `src/lib/styles/tokens.css` — no hardcoded colors.
-4. Keep components small. If a component grows past ~200 lines it almost certainly wants to be split.
-5. Theme via the `[data-theme="light"|"dark"]` attribute on `<html>` — light and dark must both render.
+Do not add a tool by only adding a UI label.
+
+Tool support needs:
+
+- verified upstream install path
+- renderer format definition
+- scope model: user, project, or both
+- destination resolution
+- detection behavior
+- uninstall/reconcile behavior
+- unit tests
+- parity test where an upstream converter exists
+
+The recommended next architecture is a manifest in the AA repo that both `scripts/install.sh` and this app can consume.
 
 ## Tests
 
-- **Rust:** `cargo test --manifest-path src-tauri/Cargo.toml`. Unit tests live inline under `#[cfg(test)] mod tests`; fixture-driven parser tests use the JSON under `src-tauri/tests/fixtures/`.
-- **Integration (real brew):** `cargo test --manifest-path src-tauri/Cargo.toml -- --ignored` — these spawn real `brew` and require Homebrew on the host.
-- **Frontend:** `npm run check` (svelte-check + tsc). There is no Vitest suite yet; adding one is welcome.
+Common local checks:
 
-A PR that introduces new logic without tests will get a request for tests, not a rejection. A PR that breaks an existing test will get a request to fix it.
+```sh
+cargo fmt --check --manifest-path src-tauri/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml --lib
+npm run check
+npm run build
+```
 
-## Code style
+Phase C batch:
 
-Minimal. Match what's already there:
+```sh
+npm run build:phase-c
+```
 
-- Rust: `cargo fmt` defaults. No custom rustfmt.toml.
-- TypeScript / Svelte: project defaults. No Prettier config fight, no autoformat-on-save mandate.
-- Prefer the patterns in [`memory-bank/systemPatterns.md`](./memory-bank/systemPatterns.md) over inventing new ones. If you think a pattern needs to change, open an issue first.
+Renderer parity:
 
-## Submitting changes
+```sh
+AGENCY_AGENTS_PARITY_ROOT=/Users/michael/Software/AgentLand/agency-agents \
+cargo test --manifest-path src-tauri/Cargo.toml upstream_convert_sh_is_byte_identical_for_transform_tools -- --ignored
+```
 
-Open a PR with:
+## Code Style
 
-- **What changed** — one or two sentences.
-- **Why** — the motivation. "It bugged me" is a fine reason for a small fix.
-- **Screenshots** if the change touches the UI (before/after when reasonable).
-- **Test notes** — what you ran locally, what you didn't.
+- Rust: `cargo fmt`.
+- Svelte/TypeScript: match the existing Svelte 5 runes style.
+- Prefer existing components and stores over new abstractions.
+- Keep UI copy direct and operational.
+- Avoid new dependencies unless they clearly earn their weight.
 
-Smaller PRs land faster. A 30-line bug fix will get merged before a 3,000-line refactor.
+## PR Guidance
 
-## What kind of PRs land easily
+Include:
 
-- Bug fixes with a clear reproduction.
-- Small accessibility improvements (focus order, ARIA labels, keyboard handling).
-- Documentation fixes — typos, broken links, clearer wording.
-- Test coverage for existing code paths.
-- Performance tweaks with a measurement.
-- Small UX polish that matches the existing tone (quiet, dense, Mac-native).
+- what changed
+- why it changed
+- screenshots for UI changes
+- test commands run
+- any residual risk or unavailable platform verification
 
-## What needs discussion first
+Easy PRs:
 
-Open an issue before sending a PR for:
+- docs corrections
+- tests for existing behavior
+- small accessibility fixes
+- focused bug fixes with reproduction
+- verified tool-path corrections
 
-- **New features** — especially anything that adds a sidebar section or a new top-level surface.
-- **New dependencies** — both Rust crates and npm packages. The bar is "earns its weight."
-- **Architectural changes** — anything that touches the IPC contract, the write-mutex model, or the streaming pattern.
-- **Network calls** — the only outbound traffic today is to `formulae.brew.sh`. Adding a new host is a discussion.
-- **Telemetry, analytics, accounts, or anything user-identifying** — these are non-goals. A PR adding any of them will be closed.
+Discuss first:
 
-## Code of conduct
+- new top-level surfaces
+- new production dependencies
+- new network hosts
+- installer architecture changes
+- multi-file renderer support
+- signing, updater, or release pipeline changes
+- telemetry, accounts, or sync features
 
-Be kind. Assume good faith. Disagree about the work, not the person. Don't be a jerk in issues, PRs, commit messages, or anywhere else this project shows up.
+## Code Of Conduct
 
-That's the whole policy. If something serious comes up that isn't covered by "don't be a jerk," email the maintainer listed in the repo and we'll deal with it directly.
+Be direct, kind, and specific. Disagree about the work, not the person.

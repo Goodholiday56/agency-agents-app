@@ -1,41 +1,21 @@
-# tools/catalog/ — Bundled Homebrew catalog snapshot
+# tools/catalog
 
-This directory builds the catalog snapshot that ships baked into the app
-binary. The app's in-app **Refresh** button fetches a fresh copy at
-runtime and writes it under `~/Library/Application Support/brew-browser/catalog/`;
-that user-data copy supersedes the bundled one. The bundled snapshot is
-the offline / first-launch fallback.
+## Status
 
-## When to run
+Legacy inherited tooling from the source app. It is not part of the current Agency Agents runtime or release pipeline.
 
-- Before tagging a release (so the shipped app starts with a reasonably
-  fresh catalog)
-- Any time the upstream API shape changes and Rust deserialisation needs
-  a fresh fixture to verify against
-- Otherwise: never — daily refresh is not the goal, that's the in-app
-  button's job
+The Agency Agents app does not build a Homebrew formula/cask catalog. Its catalog source is the [`agency-agents`](https://github.com/msitarzewski/agency-agents) repository, handled by `src-tauri/src/corpus/mod.rs`.
 
-## What it produces
+## Current Catalog Model
 
-Three files in `src-tauri/data/catalog/`:
+Agency Agents uses:
 
-| File | Size | What |
-|------|------|------|
-| `formula.json.gz` | ~6–8 MB | gzip -9 of `https://formulae.brew.sh/api/formula.json` |
-| `cask.json.gz`    | ~2–3 MB | gzip -9 of `https://formulae.brew.sh/api/cask.json` |
-| `manifest.json`   | <1 KB   | `{as_of, formula_count, cask_count, *_compressed_bytes, fetched_from}` |
+- a bundled `agency-agents` baseline under `src-tauri/resources/corpus-baseline/`
+- an optional managed clone at `~/.agency-agents`
+- an optional user-selected clone, for example `/Users/michael/Software/AgentLand/agency-agents`
 
-Total uncompressed payload: ~45 MB. Compressed: ~10 MB. These three
-files are read by Rust at compile time via `include_bytes!` /
-`include_str!` (see `src-tauri/src/catalog/mod.rs`).
+The app indexes Markdown agent files, discovers categories from upstream tooling, and renders tool-specific install files natively in Rust.
 
-## Usage
+## Action
 
-```
-python3 tools/catalog/fetch.py
-```
-
-Stdlib only — no `pip install` step. Python 3.9+ required.
-
-The script uses temp + atomic rename, so an interrupted run leaves the
-prior snapshot intact.
+Do not use `tools/catalog/fetch.py` for Agency Agents work unless this directory is deliberately repurposed. Future catalog tooling should target the AA repo structure, not Homebrew APIs.

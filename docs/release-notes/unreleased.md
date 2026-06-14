@@ -1,18 +1,29 @@
-## brew-browser (unreleased) — Window behavior fixes
+## Agency Agents v0.1.0 - Unreleased
 
-Signed + notarized. macOS 13+, Apple Silicon. Auto-updates via the in-app updater.
+> Staging file. Rename to `docs/release-notes/<version>.md` when the next version is cut.
 
-> **Staging file.** Rename to `docs/release-notes/<version>.md` when the next version is cut.
+### Highlights
 
-### What's new
+- Native app for browsing and installing agents from the `agency-agents` catalog.
+- Catalog source picker supports bundled baseline, managed clone, and user-selected clone.
+- Agents workspace combines catalog browsing, local install state, and per-tool deployment controls.
+- Tools panel shows detected tools, install counts, project targets, and bulk operations.
+- Dashboard charts summarize tool coverage, install health, and category distribution.
+- Deterministic renderers for Claude Code, Codex, Gemini CLI, GitHub Copilot, Qwen Code, Cursor, and opencode.
+- Install ledger and reconciliation classify files as current, outdated, modified, removed, or foreign.
+- Modified-file uninstall backs up divergent files before deletion.
+- macOS Liquid Glass icon path and cross-platform window chrome configuration.
 
-**The window remembers its size and position.** Resize or move the window, quit, and relaunch — it reopens exactly where and how you left it. Powered by `tauri-plugin-window-state`, which saves geometry on move/resize and on exit, then restores it on the next launch. The previous `1100×720` default is now used only on a true first launch. (#17, #19)
+### Quality Gates
 
-### Bug fixes
+- `cargo test --lib`
+- `npm run check`
+- `npm run build`
+- ignored renderer parity test against the active `agency-agents` clone
+- Phase C platform-config validation
 
-**Window stays draggable with Settings open.** Opening Settings dims the main window with a scrim; previously that scrim covered the title bar's drag region, so you couldn't move the window without closing Settings first. The scrim is now inset below the 36px title bar, so the window drags normally with Settings open. (#8, #10)
+### Known Release Notes
 
-### Acknowledgments
-
-- @bytepl (Maciej Chojnacki) for reporting the window-state issue (#17) with a clean, reproducible repro.
-- @unluckyquote (Nik) for reporting the unmovable-window-with-Settings-open bug (#8).
+- The app is not an agent runtime.
+- Some AA repo targets are not yet exposed as app installs because they need multi-file or aggregate renderer work.
+- Windows/Linux builds need native runtime verification before support is claimed beyond build validation.
