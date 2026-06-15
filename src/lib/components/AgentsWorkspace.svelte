@@ -221,7 +221,7 @@
               {#each corpus.tiles as c (c.slug)}
                 {@const Icon = resolveCategoryIcon(c.icon)}
                 <button class="cat-opt" role="menuitem" class:on={ui.agentsCategory === c.slug} onclick={() => pickCategory(c.slug)}>
-                  <Icon size={14} /><span class="truncate">{c.label}</span><span class="cat-c">{c.count}</span>
+                  <span class="cat-ic" style="color:{corpus.colorOf(c.slug)}"><Icon size={14} /></span><span class="truncate">{c.label}</span><span class="cat-c">{c.count}</span>
                 </button>
               {/each}
             </div>
@@ -432,6 +432,10 @@
   .cat-opt:hover { background: var(--color-surface-sunken); }
   .cat-opt.on { color: var(--color-brand); }
   .cat-opt .truncate { flex: 1; min-width: 0; }
+  /* Division icon tinted with the division's brand color; dim to neutral when
+     the row is the active selection so the brand-blue "on" state stays legible. */
+  .cat-ic { display: inline-flex; flex: none; }
+  .cat-opt.on .cat-ic { color: var(--color-brand) !important; }
   .cat-c { font-size: var(--text-caption); color: var(--color-text-muted); }
 
   .bulk-bar { display: flex; align-items: center; gap: var(--space-2); }

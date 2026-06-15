@@ -138,6 +138,12 @@ class CorpusStore {
     return this.categories.find((c) => c.slug === slug)?.color ?? "#94A3B8";
   }
 
+  /** Lucide icon NAME for a division slug, from the catalog metadata. Falls
+      back to "HelpCircle" (resolveCategoryIcon's own fallback) for unknowns. */
+  iconOf(slug: string): string {
+    return this.categories.find((c) => c.slug === slug)?.icon ?? "HelpCircle";
+  }
+
   /**
    * Filter the agent list by an optional category slug and a free-text query
    * (matched case-insensitively against name + description + vibe). Returns a
