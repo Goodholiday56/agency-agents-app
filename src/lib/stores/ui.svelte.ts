@@ -3,7 +3,7 @@
  * Uses Svelte 5 runes inside a module-scope class instance.
  */
 
-import type { SettingsSection, SidebarSection, ThemePreference } from "$lib/types";
+import type { SettingsSection, SidebarSection, ThemePreference, Tool } from "$lib/types";
 
 /** A navigable app location — the unit of back/forward history. Captures the
     section plus the full Agents workspace view-state so a back/forward jump
@@ -119,6 +119,9 @@ class UiStore {
   /** Slug of the agent open in the workspace detail pane; null = none. In ui so
       back/forward can restore the open agent. */
   agentsSelected: string | null = $state(null);
+  /** Tool selected in the Tools console; null = let it auto-pick. Set by the
+      Dashboard "Coverage by tool" rows so a click lands on that tool's console. */
+  toolsSelected: Tool | null = $state(null);
 
   /** Back/forward history of app locations + the cursor into it. */
   navStack: NavLocation[] = $state([]);
@@ -170,6 +173,12 @@ class UiStore {
     // Navigating to ANY section closes the package detail slide-over.
     this.selectedPackage = null;
     this.commitNav();
+  }
+
+  /** Open the Tools console with `tool` preselected (null = let it auto-pick). */
+  openTools(tool: Tool | null = null) {
+    this.toolsSelected = tool;
+    this.setSection("tools");
   }
 
   /** Jump to the unified Agents workspace (optionally within a category);

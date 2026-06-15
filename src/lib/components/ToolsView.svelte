@@ -24,6 +24,7 @@
   import { install } from "$lib/stores/install.svelte";
   import { corpus } from "$lib/stores/corpus.svelte";
   import { toast } from "$lib/stores/toast.svelte";
+  import { ui } from "$lib/stores/ui.svelte";
   import { toolAccent, toolMark } from "$lib/util/toolBadge";
   import type { InstalledAgent, InstallState, Tool, ToolInfo } from "$lib/types";
 
@@ -142,6 +143,14 @@
       selectedTool = [...tools].sort((a, b) => b.installedCount - a.installedCount)[0]?.tool ?? null;
     }
   });
+  // A Dashboard "Coverage by tool" click sets ui.toolsSelected — honor it so the
+  // console opens on that tool (overriding the auto-pick).
+  $effect(() => {
+    if (ui.toolsSelected) {
+      selectedTool = ui.toolsSelected;
+      autoPicked = true;
+    }
+  });
   // Resolve against the VISIBLE (lens-filtered) list, so switching the lens to
   // one that excludes the selected tool closes its detail panel rather than
   // leaving a stale tool shown that isn't in the list.
@@ -258,7 +267,7 @@
         {@const ver = install.versionOf(t.tool)}
         {@const inst = installedCount(t.tool)}
         <li>
-          <button class="trow" class:sel={selectedTool === t.tool} class:dim={!t.detected && h.total === 0} onclick={() => (selectedTool = t.tool)}>
+          <button class="trow" class:sel={selectedTool === t.tool} class:dim={!t.detected && h.total === 0} onclick={() => { selectedTool = t.tool; ui.toolsSelected = t.tool; }}>
             <span class="badge" style="--accent:{toolAccent(t.tool)}">{toolMark(t.label)}</span>
             <span class="trow-id">
               <span class="trow-top">
