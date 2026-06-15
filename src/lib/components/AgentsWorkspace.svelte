@@ -43,6 +43,33 @@
 
   onMount(() => corpus.ensureLoaded());
 
+  // ── OS-style dropdown dismissal: click anywhere outside (or Escape) closes the
+  //    open menu. Each trigger button is excluded so clicking it just toggles. ──
+  let catBtn = $state<HTMLElement>();
+  let catMenu = $state<HTMLElement>();
+  let bulkBtn = $state<HTMLElement>();
+  let bulkMenu = $state<HTMLElement>();
+  function onDocClick(e: MouseEvent) {
+    const t = e.target as Node | null;
+    if (!t) return;
+    if (catMenuOpen && !catBtn?.contains(t) && !catMenu?.contains(t)) catMenuOpen = false;
+    if (menuOpen && !bulkBtn?.contains(t) && !bulkMenu?.contains(t)) menuOpen = false;
+  }
+  function onKey(e: KeyboardEvent) {
+    if (e.key === "Escape") {
+      catMenuOpen = false;
+      menuOpen = false;
+    }
+  }
+  onMount(() => {
+    document.addEventListener("click", onDocClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onDocClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  });
+
   // ── Install rows grouped by agent slug (reactive over the reconcile) ──
   const installsBySlug = $derived.by(() => {
     const m = new Map<string, InstalledAgent[]>();
@@ -66,7 +93,7 @@
     ui.setAgentsCategory(slug);
     catMenuOpen = false;
   }
-  const categoryLabel = $derived(ui.agentsCategory ? corpus.labelOf(ui.agentsCategory) : "All categories");
+  const categoryLabel = $derived(ui.agentsCategory ? corpus.labelOf(ui.agentsCategory) : "All divisions");
 
   // Compact per-row state dots (one per install row, colored by state).
   function dotTone(s: InstallState): string {
@@ -151,6 +178,10 @@
   const selInstalls = $derived([...selected].flatMap((slug) => installsBySlug.get(slug) ?? []));
   const canBulkUpdate = $derived(selInstalls.some((i) => i.state !== "current"));
   const canBulkTrack = $derived(selInstalls.some((i) => i.state === "foreign"));
+  // Foreign rows = files we don't manage ("not ours"). When the selection has any,
+  // the destructive action is a genuine delete; otherwise it's a reversible
+  // uninstall (catalog agents re-install; any edits are backed up first).
+  const selHasForeign = $derived(selInstalls.some((i) => i.state === "foreign"));
 
   async function runBulk(action: "update" | "track" | "uninstall", verb: string) {
     let picked = selInstalls;
@@ -179,13 +210,13 @@
     <div class="lp-head">
       <div class="lp-search-row">
         <div class="cat-wrap">
-          <button class="ghost cat-btn" onclick={() => (catMenuOpen = !catMenuOpen)}>
+          <button class="ghost cat-btn" bind:this={catBtn} onclick={() => (catMenuOpen = !catMenuOpen)}>
             <span class="truncate">{categoryLabel}</span><ChevronDown size={13} />
           </button>
           {#if catMenuOpen}
-            <div class="cat-menu" role="menu">
+            <div class="cat-menu" role="menu" bind:this={catMenu}>
               <button class="cat-opt" role="menuitem" class:on={!ui.agentsCategory} onclick={() => pickCategory(null)}>
-                <LayersIcon size={14} /><span class="truncate">All categories</span><span class="cat-c">{corpus.agents.length}</span>
+                <LayersIcon size={14} /><span class="truncate">All divisions</span><span class="cat-c">{corpus.agents.length}</span>
               </button>
               {#each corpus.tiles as c (c.slug)}
                 {@const Icon = resolveCategoryIcon(c.icon)}
@@ -222,19 +253,19 @@
           <span class="bulk-count">{selected.size} selected</span>
           {#if selected.size > 0}
             <div class="bulk-menu-wrap">
-              <button class="ghost" disabled={bulkBusy} onclick={() => (menuOpen = !menuOpen)}>
+              <button class="ghost" bind:this={bulkBtn} disabled={bulkBusy} onclick={() => (menuOpen = !menuOpen)}>
                 {bulkBusy ? "Working…" : "With selected"}<ChevronDown size={14} />
               </button>
               {#if menuOpen}
-                <div class="bulk-menu" role="menu">
+                <div class="bulk-menu" role="menu" bind:this={bulkMenu}>
                   <button class="bulk-opt" role="menuitem" disabled={!canBulkUpdate} title={canBulkUpdate ? "" : "All selected are in sync"} onclick={() => runBulk("update", "Updated")}>
                     <RefreshIcon size={14} /><span>Update — replace with catalog version</span>
                   </button>
                   <button class="bulk-opt" role="menuitem" disabled={!canBulkTrack} title={canBulkTrack ? "" : "Nothing untracked in the selection"} onclick={() => runBulk("track", "Tracked")}>
                     <PlusIcon size={14} /><span>Track — keep file, start managing</span>
                   </button>
-                  <button class="bulk-opt danger" role="menuitem" onclick={() => { menuOpen = false; confirmDelete = true; }}>
-                    <TrashIcon size={14} /><span>Delete — remove files from disk</span>
+                  <button class="bulk-opt" class:danger={selHasForeign} role="menuitem" onclick={() => { menuOpen = false; confirmDelete = true; }}>
+                    <TrashIcon size={14} /><span>{selHasForeign ? "Delete — remove files from disk" : "Uninstall — remove from disk (re-installable)"}</span>
                   </button>
                 </div>
               {/if}
@@ -253,8 +284,8 @@
         </EmptyState>
       {:else if visible.length === 0}
         <EmptyState
-          title={query.trim() ? `Nothing matches “${query.trim()}”.` : "No agents in this category."}
-          body="Try a different search or category."
+          title={query.trim() ? `Nothing matches “${query.trim()}”.` : "No agents in this division."}
+          body="Try a different search or division."
         >
           {#snippet icon()}<SearchIcon size={48} />{/snippet}
         </EmptyState>
@@ -337,17 +368,23 @@
 {#if confirmDelete}
   <button class="cd-scrim" aria-label="Cancel" onclick={() => (confirmDelete = false)}></button>
   <div class="cd-box" role="alertdialog" aria-modal="true" aria-label="Confirm delete">
-    <div class="cd-head"><AlertTriangle size={20} /><h2>Delete {selected.size} agent{selected.size === 1 ? "" : "s"}?</h2></div>
+    <div class="cd-head"><AlertTriangle size={20} /><h2>{selHasForeign ? "Delete" : "Uninstall"} {selected.size} agent{selected.size === 1 ? "" : "s"}?</h2></div>
     <p class="cd-body">
-      This <strong>permanently removes {selInstalls.length} file{selInstalls.length === 1 ? "" : "s"} from disk</strong>
-      (every tool these agents are installed in) — including any installed outside this app.
-      Modified files are backed up before removal; catalog-identical files can be installed again.
+      {#if selHasForeign}
+        This <strong>permanently removes {selInstalls.length} file{selInstalls.length === 1 ? "" : "s"} from disk</strong>
+        (every tool these agents are installed in) — <strong>including files installed outside this app</strong>.
+        Modified files are backed up before removal; catalog-identical files can be installed again.
+      {:else}
+        Removes {selInstalls.length} file{selInstalls.length === 1 ? "" : "s"} from disk (every tool these agents
+        are installed in). Catalog-identical agents can be <strong>installed again in a click</strong>; any edits
+        you made are backed up first.
+      {/if}
     </p>
     <p class="cd-note">Tip: to swap in the catalog version instead, use <strong>Update</strong> — it backs your copy up first.</p>
     <div class="cd-actions">
       <button class="cd-cancel" onclick={() => (confirmDelete = false)}>Cancel</button>
-      <button class="cd-delete" disabled={bulkBusy} onclick={() => { confirmDelete = false; runBulk("uninstall", "Deleted"); }}>
-        <TrashIcon size={14} /> Delete {selInstalls.length}
+      <button class="cd-delete" disabled={bulkBusy} onclick={() => { confirmDelete = false; runBulk("uninstall", selHasForeign ? "Deleted" : "Uninstalled"); }}>
+        <TrashIcon size={14} /> {selHasForeign ? "Delete" : "Uninstall"} {selInstalls.length}
       </button>
     </div>
   </div>
