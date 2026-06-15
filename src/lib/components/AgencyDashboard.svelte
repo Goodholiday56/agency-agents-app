@@ -32,11 +32,11 @@
     return c;
   });
   const healthSegments = $derived([
-    { label: "In sync",   value: byState.current,  color: "var(--color-success)", onClick: () => ui.openAgents("installed") },
-    { label: "Outdated",  value: byState.outdated,  color: "var(--color-warning)", onClick: () => ui.openAgents("attention") },
-    { label: "Modified",  value: byState.modified,  color: "color-mix(in srgb, var(--color-warning) 55%, var(--color-danger))", onClick: () => ui.openAgents("attention") },
-    { label: "Untracked", value: byState.foreign,   color: "var(--color-brand)",   onClick: () => ui.openAgents("untracked") },
-    { label: "Missing",   value: byState.removed,   color: "var(--color-danger)",  onClick: () => ui.openAgents("attention") },
+    { label: "In sync",   value: byState.current,  color: "var(--color-success)", onClick: () => ui.openAgents() },
+    { label: "Outdated",  value: byState.outdated,  color: "var(--color-warning)", onClick: () => ui.openAgents() },
+    { label: "Modified",  value: byState.modified,  color: "color-mix(in srgb, var(--color-warning) 55%, var(--color-danger))", onClick: () => ui.openAgents() },
+    { label: "Untracked", value: byState.foreign,   color: "var(--color-brand)",   onClick: () => ui.openAgents() },
+    { label: "Missing",   value: byState.removed,   color: "var(--color-danger)",  onClick: () => ui.openAgents() },
   ]);
 
   // ── Coverage by tool — only tools that actually hold agents (less noise) ──
@@ -57,22 +57,22 @@
 
 <section class="dash">
   <div class="stats">
-    <button class="stat" onclick={() => ui.openAgents("all")}>
+    <button class="stat" onclick={() => ui.openAgents()}>
       <span class="s-num">{available}</span>
       <span class="s-lbl">agents available</span>
     </button>
-    <button class="stat" onclick={() => ui.openAgents("installed")}>
+    <button class="stat" onclick={() => ui.openAgents()}>
       <span class="s-num">{managed}</span>
       <span class="s-lbl">installed by you</span>
     </button>
     {#if attention > 0}
-      <button class="stat warn" onclick={() => ui.openAgents("attention")}>
+      <button class="stat warn" onclick={() => ui.openAgents()}>
         <span class="s-num">{attention}</span>
         <span class="s-lbl">need attention</span>
       </button>
     {/if}
     {#if foreign > 0}
-      <button class="stat info" onclick={() => ui.openAgents("untracked")}>
+      <button class="stat info" onclick={() => ui.openAgents()}>
         <span class="s-num">{foreign}</span>
         <span class="s-lbl">found to track</span>
       </button>
@@ -117,7 +117,7 @@
   </div>
 
   <div class="card">
-    <h3 class="c-title">Catalog by category</h3>
+    <h3 class="c-title">Catalog by division</h3>
     <ul class="bars scroll">
       {#each cats as c (c.slug)}
         {@const Icon = resolveCategoryIcon(c.icon)}

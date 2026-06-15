@@ -5,11 +5,10 @@
  * `AppErrorPayload`-shaped object on backend error. Callers should use
  * `try/catch` and `isAppError(e)` to narrow.
  *
- * The brew-domain wrappers (catalog/search/install/brewfile/trending/
- * enrichment/services/vulns/cask-icon) were removed in the brew-domain
- * sweep. What remains is the cross-cutting infrastructure the agency
- * shell relies on: app version, settings persistence, GitHub
- * integration, and the in-app updater.
+ * Covers the cross-cutting infrastructure the agency shell relies on:
+ * app version, settings persistence, GitHub integration, and the in-app
+ * updater. (Agent catalog/install commands live in their own modules —
+ * `corpus` / `install`.)
  */
 
 import { invoke } from "@tauri-apps/api/core";

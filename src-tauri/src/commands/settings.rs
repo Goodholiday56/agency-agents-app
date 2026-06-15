@@ -505,8 +505,7 @@ pub async fn settings_reset(state: State<'_, AppState>) -> Result<Settings, AppE
 
 /// Return the app's version string from the Tauri package info. Source of
 /// truth is `Cargo.toml` (`tauri.conf.json` mirrors it). Avoids reading
-/// `package.json` from the renderer. Relocated here from the retired
-/// `commands/brew_env.rs` during the brew-domain sweep.
+/// `package.json` from the renderer.
 #[tauri::command]
 pub fn app_version<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> String {
     app.package_info().version.to_string()

@@ -39,7 +39,7 @@
     return null;
   }
 
-  /** Footer: live corpus size. Reads as the app's own status, not brew's. */
+  /** Footer: live corpus size — the app's own at-a-glance status. */
   const agentCount = $derived(corpus.agents.length);
 </script>
 
@@ -100,7 +100,7 @@
     .sidebar { transition: none; }
   }
 
-  /* Brand row — replaces brew's package-search box. Click → Agents home. */
+  /* Brand row — the app's home affordance. Click → Agents home. */
   .brand {
     display: flex;
     align-items: center;

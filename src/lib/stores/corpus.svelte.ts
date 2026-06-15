@@ -1,6 +1,6 @@
 /**
- * Corpus store — the Agency Agents equivalent of brew-browser's `catalog` +
- * `categories` stores. Lazy-loads the agent corpus and its category taxonomy
+ * Corpus store — the in-memory view of the agent catalog and its category
+ * taxonomy. Lazy-loads the agent corpus and its category taxonomy
  * via the `corpus_list` / `corpus_get` / `corpus_categories` Tauri commands and
  * exposes `$derived` helpers for the Discover tile grid, search, and the
  * per-agent slide-over.

@@ -286,8 +286,7 @@ export function appErrorMessage(e: AppErrorPayload): string {
 // =========================================================
 //
 // Mirrors the Rust DTOs in `src-tauri/src/types.rs`. Wire shape is
-// camelCase. These are ADDITIVE alongside the inherited brew types
-// while the corpus subsystem is built out phase by phase.
+// camelCase.
 
 /**
  * An AI coding tool we can deploy an agent into. The 11 members are the
@@ -441,8 +440,9 @@ export interface InstallRecord {
 }
 
 /**
- * The five reconciliation states (our `brew list`/`brew outdated`). See
- * systemPatterns.md §4 for the disk ↔ ledger ↔ corpus classification.
+ * The five reconciliation states (like a package manager's installed /
+ * outdated states). See systemPatterns.md §4 for the disk ↔ ledger ↔ corpus
+ * classification.
  */
 export type InstallState =
   | "current"
@@ -542,18 +542,6 @@ export type SidebarSection =
   | "tools"
   | "loadouts"
   | "activity";
-
-/**
- * Filter lens for the unified Agents workspace. The catalog browse and the
- * old Library view are one surface now; the install-state split becomes a
- * filter over a single agent list rather than a separate destination.
- *   - `all`          — every agent in the catalog (browse mode).
- *   - `installed`    — agents deployed in at least one tool (any state on disk).
- *   - `notInstalled` — agents not deployed anywhere (the complement of installed).
- *   - `attention`    — agents with a drifted install (outdated/modified/removed).
- *   - `untracked`    — agents recognized on disk but not yet tracked (foreign).
- */
-export type AgentsFilter = "all" | "installed" | "notInstalled" | "attention" | "untracked";
 
 export type ThemePreference = "light" | "dark" | "system";
 
