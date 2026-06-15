@@ -397,3 +397,37 @@ was working-tree only). Resolved the two IMMEDIATE backlog items and the deferre
   indexing + parity absorbed it cleanly).
 - **Green:** cargo test 258/0 (+ the 1 parity test 1/0), svelte-check 0 errors, vite build clean.
   Then: memory bank updated, committed, pushed, PR opened.
+
+## 2026-06-15 — Pre-release polish: brew vestiges, Activity Journal, Tools lens, cargo-test gate
+On `release-planning` (off merged main). Documented the v0.1.0 release plan in `docs/BUILD.md#Release
+Checklist` + a `decisions.md` ADR (manual signed DMG, SKIP_UPDATER, auto-update deferred) — NOT cutting yet.
+Then knocked out pre-release issues, all green (svelte 0, cargo 258/0), committed + pushed:
+- **brew vestige cleanup**: renamed `BrewErrorPayload`/`isBrewError`/`brewErrorMessage` → `AppError*`;
+  removed the dead `catalogAutoRefresh` setting (struct/enum/tests + types.ts); removed dead error codes
+  (`brew_not_found`/`brew_exit_non_zero`/`brewfile_not_found`/`job_not_found`/`canceled`/`feature_disabled`/
+  `vulns_not_installed` — backend `AppError` emits none). **Deleted the brew-era Python pipeline**
+  `tools/{catalog,categorize,enrich,pipeline,trending-collector}` — TRIAGE LESSON: I first wrongly flagged
+  these as "live catalog pipeline"; they actually fetch Homebrew formulae (`fetch.py` → formulae.brew.sh)
+  and are NOT used by AA (catalog = `corpus/mod.rs` reading the agency repo). `categoryIcon.ts` only
+  referenced `categorize.py` in a comment (repointed to `agency-categories.json`).
+- **Activity Journal**: the inherited "Activity" was a fully-built but PERMANENTLY-EMPTY brew streaming log
+  (Sidebar ⌘4 + `ActivityHistory` + 223-line store + `ActivityDrawer`) — no AA backend ever emits
+  `AppStreamEvent` (`startJob`/`handleEvent` called from nowhere). Michael: "Use it!" as a journal. Pivoted
+  `activity.svelte.ts` → `JournalEntry` store (reused the localStorage persist/hydrate/cap machinery, v1→v2);
+  `install.svelte.ts` logs install/uninstall/update/track/bulk + default-target switch; `ActivityHistory`
+  rewritten (day-grouped rows, action icons, relative time, ok/error dots, Clear). Deleted `ActivityDrawer`,
+  `AppStreamEvent`/`ActivityJob`/`ActivityLine`, `reportContextFromActivityJob`, the sidebar running badge.
+  **Built via Workflow** (Frontend-Developer planner→builder, then a Code-Reviewer + UX-Architect verify
+  team + fix loop): clean in 1 iteration, but the UX-Architect caught 3 real `major` issues my loop's
+  blocker-only gate let through — Clear button hidden <1000px, "Switched added as default target →…"
+  broken English, "Bulk 3 agents" non-verb. Hand-fixed all three. LESSON: gate the loop on `major`+, not
+  just `blocker`.
+- **Tools pane lens**: default to **Installed** (detected OR has agents); `Installed · Not installed · All`
+  segmented toggle on the top row next to rescan (no count chips, per Michael's sketch). `ToolsView.svelte`.
+- **Cold `cargo test` tauri-gate fix**: bare cargo (tests/CI, no Tauri CLI) reads only base `tauri.conf.json`
+  which omits `macOSPrivateApi` (it's in `tauri.macos.conf.json`, merged only by the CLI) → `tauri-build`
+  rejects the `macos-private-api` Cargo feature. Hidden locally by a warm build-script cache; fails on fresh
+  checkout/CI. FIX: `.cargo/config.toml` sets `TAURI_CONFIG='{"app":{"macOSPrivateApi":false}}'` (the value
+  that passes; `:true` does NOT). The Tauri CLI sets its own process-env `TAURI_CONFIG` (wins), so real
+  `tauri dev`/`build` are unaffected — VERIFIED `tauri dev` launches clean. `macos-private-api` in `Cargo.toml`.
+- **Showed it live**: `npm run tauri dev` (warm ~4.6s). Can't self-screenshot — Michael drove. GOTCHA stays.

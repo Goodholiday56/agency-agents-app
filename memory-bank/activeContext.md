@@ -1,9 +1,27 @@
 # Active Context — Agency Agents
 
-**State**: DOCS. Phase C landed — renderer parity VERIFIED, uninstall safety RESOLVED, cross-platform
-chrome DONE. Both IMMEDIATE backlog items closed. Branch `codex/renderer-parity-safety-phase-c`
-committed + pushed + PR opened.
-**Last updated**: 2026-06-14
+**State**: BUILD (pre-release polish, on `release-planning`). Phase C merged to `main`. **Release plan
+LOCKED & documented, NOT cut yet** — v0.1.0, signed/notarized manual DMG, `SKIP_UPDATER=1`, auto-update
+deferred. Runbook: `docs/BUILD.md#Release Checklist`; decision in `decisions.md` (2026-06-14).
+**Last updated**: 2026-06-15
+
+## ✅ Pre-release polish (2026-06-15) — committed + pushed on `release-planning`
+- **brew vestige cleanup**: error-type rename (`BrewError*`→`AppError*`), removed dead `catalogAutoRefresh`
+  setting, removed the dead error codes (`brew_*`, `job_not_found`, `canceled`, `feature_disabled`,
+  `vulns_not_installed`), and **deleted the brew-era Python pipeline** (`tools/{catalog,categorize,enrich,
+  pipeline,trending-collector}` — they fetched Homebrew formulae, NOT used by AA; the catalog comes from
+  `corpus/mod.rs`).
+- **Activity Journal** (replaces the inherited, permanently-empty brew streaming "Activity"): pivoted
+  `activity.svelte.ts` to a `JournalEntry` store (localStorage), `install.svelte.ts` logs every
+  install/uninstall/update/track/bulk + default-target switch, `ActivityHistory.svelte` rewritten as a
+  day-grouped clearable journal. Deleted `ActivityDrawer.svelte` + `AppStreamEvent`/`ActivityJob` types.
+  Built via a Workflow (planner→builder→Code-Reviewer+UX-Architect team→fix loop); UX nits hand-polished.
+- **Tools pane lens**: defaults to **Installed** (detected/in-use) tools; toggle `Installed · Not installed
+  · All` (top row beside rescan, no count chips). `ToolsView.svelte`.
+- **Cold `cargo test` tauri-gate fix**: `.cargo/config.toml` feeds `TAURI_CONFIG` so bare cargo (tests/CI)
+  passes the `macos-private-api` allowlist gate (Tauri CLI overrides it for real builds). `macos-private-api`
+  enabled in `Cargo.toml`. Verified `tauri dev` still launches clean.
+- **Green throughout**: svelte-check 0 errors, cargo 258/0.
 
 ## ✅ Phase C (2026-06-14) — both red items closed
 - **Renderer parity VERIFIED.** `render/mod.rs` mirrors the upstream shell converter byte-for-byte
