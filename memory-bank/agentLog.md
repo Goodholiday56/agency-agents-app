@@ -447,3 +447,41 @@ With `tauri dev` running, iterated on the Tools + Agents panes via screenshots; 
 - **Detail pane hidden when empty**: the resize handle + `<aside class="detail-pane">` only render when an
   agent is selected (`{#if panelAgent}`); the list goes full-width otherwise. Dropped the "Pick an agent"
   empty state + its `counts` derived + `.dpe-*` CSS.
+
+### 2026-06-15 (later 2) — cross-platform creds, dead-code/brew pass, coverage-% matrix, Category→Division
+- **Cross-platform GitHub credential storage FIXED + validated on VMs.** The token was stored macOS-only:
+  `keyring` was built with `apple-native` only ("we only use the macOS path") so Windows/Linux had no
+  native vault. Restructured `Cargo.toml` to per-target keyring backends — macOS `apple-native` (Keychain),
+  Windows `windows-native` (Credential Manager), Linux `sync-secret-service`+`crypto-rust` (Secret Service
+  via pure-Rust zbus, no system libdbus to build). ALSO found+fixed a latent error in my earlier `build:`
+  commit — it wrongly added `macos-private-api` to the BASE `[dependencies]` tauri, which failed
+  `validate-config.mjs` ("base excludes macos-private-api") and broke the **Linux** `cargo test` gate (the
+  feature was on but config said false). It belongs in `[target.macos]` only (already there). **Validated via
+  `phase-c.sh` VM matrix** (Scratch=Ubuntu + Windows 11, both running): Ubuntu cargo **258/0** + deb/rpm/
+  appimage bundles; Windows x64 `.exe` + PE headers + artifacts; keyring backends compile on all three.
+  (Windows arm64 build was a transient VM file-lock `Access denied` on a stale `.exe`, not code.) macOS
+  stays 258/0. **GOTCHA for next session**: macos-private-api lives ONLY in `[target.macos]`; the cold
+  cargo gate is handled by `.cargo/config.toml`. Linux Secret Service needs a running daemon at RUNTIME
+  (headless VM has none) — build/compile is validated, true runtime auth needs a desktop session.
+- **Dead code + brew pass**: removed the dead filter-lens plumbing (`ui.agentsFilter`, `AgentsFilter` type,
+  `setAgentsFilter`, nav-history field) + repointed Dashboard/palette callers (dropped the dead
+  "Open Agents — Installed/Needs attention" palette entries). A fork scrubbed ALL residual brew comment
+  mentions (`grep -rin brew src/ src-tauri/src/` → none) + the `net.rs` test fixture; `cargo build --tests`
+  → zero dead_code/unused warnings. **Consequence flagged**: the Dashboard drift cards (Outdated/Modified/
+  Untracked/Missing) now just open Agents — no per-state drill-down anymore (lens is gone).
+- **Adaptive uninstall/delete wording** (`AgentsWorkspace`): bulk destructive action relabels by ownership —
+  "Uninstall — remove from disk (re-installable)" + neutral styling when all selected are ours; the loud red
+  "Delete — remove files from disk" only when the selection includes `foreign` (not-ours) files.
+- **OS-style menu dismiss** (`AgentsWorkspace`): category + bulk menus close on click-outside / Escape,
+  excluding the trigger button so it still toggles (matches `TitlebarControls`' pattern).
+- **Tools detail closes on lens change** (`ToolsView`): `sel` now resolves against `visibleTools`, so
+  switching the lens away from the selected tool closes its detail panel.
+- **CoverageMatrix → coverage-%**: cells shade by `installed ÷ division's catalog size` (0–100% per cell),
+  not absolute count vs the global max — a fully-deployed small division reads as strong as a big one. Row
+  number is now the division's catalog size (the denominator); tooltip `X of Y (Z%)`. (Alt on the table:
+  Idea 2 = row-normalized distribution, one-line denominator swap.)
+- **Terminology: user-facing "Category" → "Division"** (the catalog repo's term). Changed the visible labels
+  only (CoverageMatrix header, "All divisions", empty-state copy, "Catalog by division"); the internal
+  `category` field/identifiers (`agentsCategory`, `openDivision`, `agent.category`, `agency-categories.json`)
+  stay — that's the catalog's frontmatter key.
+- Green throughout: svelte-check 0, cargo 258/0 (macOS + Linux), config validation all-pass.

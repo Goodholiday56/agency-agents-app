@@ -25,7 +25,16 @@ deferred. Runbook: `docs/BUILD.md#Release Checklist`; decision in `decisions.md`
 - **Cold `cargo test` tauri-gate fix**: `.cargo/config.toml` feeds `TAURI_CONFIG` so bare cargo (tests/CI)
   passes the `macos-private-api` allowlist gate (Tauri CLI overrides it for real builds). `macos-private-api`
   enabled in `Cargo.toml`. Verified `tauri dev` still launches clean.
-- **Green throughout**: svelte-check 0 errors, cargo 258/0.
+- **Cross-platform creds FIXED + VM-validated**: GitHub token now persists to the OS-native vault per
+  platform (Keychain / Credential Manager / Secret Service) via per-target `keyring` features; also moved
+  `macos-private-api` to `[target.macos]` only (was wrongly in base deps → broke the Linux gate). Built +
+  tested on Ubuntu (258/0 + deb/rpm/appimage) and Windows x64 via `phase-c.sh` VM matrix.
+- **Dead-code/brew pass**: removed dead `agentsFilter` lens plumbing; scrubbed ALL brew comment mentions
+  (grep → none); zero cargo dead_code warnings.
+- **UX**: adaptive Uninstall/Delete wording by ownership; OS-style click-outside menu dismiss; Tools detail
+  closes when the lens hides the tool; CoverageMatrix shades by **coverage-%** (not raw size).
+- **Terminology**: user-facing **Category → Division** (catalog repo's term); internal `category` field kept.
+- **Green throughout**: svelte-check 0 errors, cargo 258/0 (macOS + Linux), config validation all-pass.
 
 ## ✅ Phase C (2026-06-14) — both red items closed
 - **Renderer parity VERIFIED.** `render/mod.rs` mirrors the upstream shell converter byte-for-byte
