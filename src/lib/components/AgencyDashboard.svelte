@@ -12,7 +12,7 @@
   import { install, SUPPORTED_TOOLS } from "$lib/stores/install.svelte";
   import { ui } from "$lib/stores/ui.svelte";
   import HealthDonut from "./HealthDonut.svelte";
-  import CoverageMatrix from "./CoverageMatrix.svelte";
+  import CoverageDonuts from "./CoverageDonuts.svelte";
 
   // Pure reader — install state loaded globally in +layout.
   onMount(() => corpus.ensureLoaded());
@@ -97,7 +97,7 @@
         <ul class="bars">
           {#each perTool as t (t.id)}
             <li>
-              <button class="bar-btn" onclick={() => ui.setSection("tools")} title={t.detected ? "Detected on this device" : "Not detected on this device"}>
+              <button class="bar-btn" onclick={() => ui.openTools(t.id)} title={t.detected ? "Detected on this device" : "Not detected on this device"}>
                 <span class="tool-dot" class:off={!t.detected}></span>
                 <span class="bar-label">{t.label}</span>
                 <span class="bar-track"><span class="bar-fill" style="width:{(t.count / maxTool) * 100}%"></span></span>
@@ -113,7 +113,7 @@
 
   <div class="card">
     <h3 class="c-title">Cross-tool coverage</h3>
-    <CoverageMatrix />
+    <CoverageDonuts />
   </div>
 
   <div class="card">
