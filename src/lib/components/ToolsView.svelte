@@ -54,13 +54,44 @@
         const n = Number(raw);
         if (Number.isFinite(n)) listWidth = clampLW(n);
       }
+      const lens = localStorage.getItem(TLENS_KEY);
+      if (lens === "installed" || lens === "uninstalled" || lens === "all") toolLens = lens;
     } catch {
       /* ignore */
     }
   });
 
   const tools = $derived(install.tools);
-  const detectedCount = $derived(tools.filter((t) => t.detected).length);
+
+  // ── Tool lens: default to only installed/discovered tools, with a toggle to
+  //    reveal the not-installed (supported-but-absent) ones, mirroring the
+  //    Agents workspace filter lens. ──
+  type ToolLens = "installed" | "uninstalled" | "all";
+  const TLENS_KEY = "agency-agents:tools-lens";
+  let toolLens = $state<ToolLens>("installed");
+  function setToolLens(l: ToolLens): void {
+    toolLens = l;
+    try {
+      localStorage.setItem(TLENS_KEY, l);
+    } catch {
+      /* ignore */
+    }
+  }
+  /** A tool counts as "installed/discovered" if its config dir is present on
+      this machine, or we already have agents deployed in it. */
+  function toolPresent(t: ToolInfo): boolean {
+    return t.detected || health(t.tool).total > 0;
+  }
+  const TLENS: { id: ToolLens; label: string }[] = [
+    { id: "installed", label: "Installed" },
+    { id: "uninstalled", label: "Not installed" },
+    { id: "all", label: "All" },
+  ];
+  function lensMatch(l: ToolLens, t: ToolInfo): boolean {
+    if (l === "all") return true;
+    return l === "installed" ? toolPresent(t) : !toolPresent(t);
+  }
+  const visibleTools = $derived(tools.filter((t) => lensMatch(toolLens, t)));
 
   const STATE_COLOR: Record<InstallState, string> = {
     current: "var(--color-success)",
@@ -186,13 +217,32 @@
   <!-- ── List pane ── -->
   <div class="list-pane" style="width:{listWidth}px">
     <header class="lp-head">
-      <span class="lp-sub">{tools.length} tools · {detectedCount} detected</span>
+      <div class="seg" role="tablist" aria-label="Filter tools">
+        {#each TLENS as f (f.id)}
+          <button
+            class="seg-btn"
+            class:on={toolLens === f.id}
+            role="tab"
+            aria-selected={toolLens === f.id}
+            onclick={() => setToolLens(f.id)}
+          >
+            {f.label}
+          </button>
+        {/each}
+      </div>
       <button class="ghost icon" disabled={busy} onclick={rescan} title="Re-detect tools, versions + installs" aria-label="Rescan">
         <RefreshIcon size={15} />
       </button>
     </header>
     <ul class="tlist">
-      {#each tools as t (t.tool)}
+      {#if visibleTools.length === 0}
+        <li class="tlist-empty">
+          {toolLens === "installed"
+            ? "No tools detected on this device yet."
+            : "Every supported tool is installed."}
+        </li>
+      {/if}
+      {#each visibleTools as t (t.tool)}
         {@const h = health(t.tool)}
         {@const ver = install.versionOf(t.tool)}
         <li>
@@ -363,11 +413,29 @@
   /* ── List pane ── */
   .list-pane { flex: none; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
   .lp-head {
-    flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
-    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+    flex: none; display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-3);
     border-bottom: 1px solid var(--color-border);
   }
-  .lp-sub { font-size: var(--text-body-sm); color: var(--color-text-secondary); }
+  /* ── Tool filter lens (mirrors the Agents workspace) ── */
+  .seg {
+    display: flex; align-items: center; gap: 2px; flex-wrap: wrap; min-width: 0;
+    padding: 2px; background: var(--color-surface-sunken);
+    border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  }
+  .seg-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 26px; padding: 0 10px; border-radius: var(--radius-sm);
+    background: transparent; color: var(--color-text-secondary);
+    font-size: var(--text-body-sm); cursor: pointer; white-space: nowrap;
+  }
+  .seg-btn:hover { color: var(--color-text-primary); }
+  .seg-btn.on { background: var(--color-surface-raised); color: var(--color-text-primary); box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.08)); }
+  .tlist-empty {
+    padding: var(--space-4) var(--space-3);
+    font-size: var(--text-body-sm); color: var(--color-text-muted); text-align: center;
+  }
   .ghost {
     display: inline-flex; align-items: center; gap: 6px;
     height: 30px; padding: 0 var(--space-3);
