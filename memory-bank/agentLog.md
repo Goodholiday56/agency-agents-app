@@ -431,3 +431,19 @@ Then knocked out pre-release issues, all green (svelte 0, cargo 258/0), committe
   that passes; `:true` does NOT). The Tauri CLI sets its own process-env `TAURI_CONFIG` (wins), so real
   `tauri dev`/`build` are unaffected — VERIFIED `tauri dev` launches clean. `macos-private-api` in `Cargo.toml`.
 - **Showed it live**: `npm run tauri dev` (warm ~4.6s). Can't self-screenshot — Michael drove. GOTCHA stays.
+
+### 2026-06-15 (later) — live UI polish in the running app (HMR feedback loop)
+With `tauri dev` running, iterated on the Tools + Agents panes via screenshots; all svelte 0-error:
+- **Tools pane**: bar reworked from a sync-state breakdown to a **catalog-coverage** bar — green =
+  distinct catalog agents installed in the tool, gray track = the rest; shown on every row
+  (`installedCount(tool)` / `catalogTotal`). (Dot = tool detected; bar = coverage — two different axes.)
+- **Agents workspace**: REMOVED the All/Installed/… filter lens (the per-row install dots already show
+  install count = number of tools deployed, so the lens was redundant; All==Installed looked pointless).
+  List now filters by search + category only; `ui.agentsFilter` plumbing is now dead in the ui store
+  (Dashboard/palette deep-links that set a filter are now no-ops — flagged, not yet cleaned).
+- **Search row**: moved the Division (category) dropdown onto the search line as the FIRST element
+  (pick target → then search), restyled to the neutral `.ghost` form look (dropped the brand/orange
+  `.active`), menu now left-aligned.
+- **Detail pane hidden when empty**: the resize handle + `<aside class="detail-pane">` only render when an
+  agent is selected (`{#if panelAgent}`); the list goes full-width otherwise. Dropped the "Pick an agent"
+  empty state + its `counts` derived + `.dpe-*` CSS.

@@ -17,7 +17,11 @@ deferred. Runbook: `docs/BUILD.md#Release Checklist`; decision in `decisions.md`
   day-grouped clearable journal. Deleted `ActivityDrawer.svelte` + `AppStreamEvent`/`ActivityJob` types.
   Built via a Workflow (planner→builder→Code-Reviewer+UX-Architect team→fix loop); UX nits hand-polished.
 - **Tools pane lens**: defaults to **Installed** (detected/in-use) tools; toggle `Installed · Not installed
-  · All` (top row beside rescan, no count chips). `ToolsView.svelte`.
+  · All` (top row beside rescan, no count chips). `ToolsView.svelte`. Bar = **catalog coverage**
+  (green installed / gray rest), not sync-state.
+- **Agents workspace streamlined**: removed the filter lens (per-row install dots already show count);
+  Division dropdown moved onto the search row as the first element (neutral form styling); detail pane
+  hidden when no agent is selected (list goes full-width).
 - **Cold `cargo test` tauri-gate fix**: `.cargo/config.toml` feeds `TAURI_CONFIG` so bare cargo (tests/CI)
   passes the `macos-private-api` allowlist gate (Tauri CLI overrides it for real builds). `macos-private-api`
   enabled in `Cargo.toml`. Verified `tauri dev` still launches clean.
