@@ -28,6 +28,7 @@
   import PersonaBody from "./PersonaBody.svelte";
   import DeploymentMatrix from "./DeploymentMatrix.svelte";
   import DiffModal from "./DiffModal.svelte";
+  import DivisionsLanding from "./DivisionsLanding.svelte";
 
   import { corpus } from "$lib/stores/corpus.svelte";
   import { install } from "$lib/stores/install.svelte";
@@ -87,7 +88,76 @@
   let query = $state("");
   let catMenuOpen = $state(false);
 
-  const visible = $derived(corpus.filtered(ui.agentsCategory, query));
+  // ── Install-state lens ── (filter the agent list by deployment state, the
+  // same dot tones shown per row). Local + localStorage like the Tools lens —
+  // not nav state. An agent matches a bucket if ANY of its install rows is in
+  // it; "none" = no install rows anywhere.
+  type Lens = "all" | "current" | "outdated" | "foreign" | "removed" | "none";
+  const LENS_KEY = "agency-agents:agents-lens";
+  const LENS_IDS: Lens[] = ["all", "current", "outdated", "foreign", "removed", "none"];
+  let lens = $state<Lens>("all");
+  function setLens(l: Lens) {
+    lens = l;
+    try { localStorage.setItem(LENS_KEY, l); } catch { /* private mode / quota */ }
+  }
+  onMount(() => {
+    try {
+      const v = localStorage.getItem(LENS_KEY);
+      if (v && (LENS_IDS as string[]).includes(v)) lens = v as Lens;
+    } catch { /* ignore */ }
+  });
+
+  /** Which state buckets an agent falls into, across all its install rows. */
+  function buckets(slug: string): Set<Lens> {
+    const rows = installsBySlug.get(slug) ?? [];
+    const s = new Set<Lens>();
+    if (rows.length === 0) { s.add("none"); return s; }
+    for (const r of rows) {
+      if (r.state === "current") s.add("current");
+      else if (r.state === "outdated" || r.state === "modified") s.add("outdated");
+      else if (r.state === "foreign") s.add("foreign");
+      else if (r.state === "removed") s.add("removed");
+    }
+    return s;
+  }
+
+  // Division + search filtered (pre-lens) — lens counts are computed over THIS
+  // so they reflect the current division/search, not the selected lens.
+  const base = $derived(corpus.filtered(ui.agentsCategory, query));
+  const visible = $derived(lens === "all" ? base : base.filter((a) => buckets(a.slug).has(lens)));
+
+  const lensCounts = $derived.by<Record<Lens, number>>(() => {
+    const c: Record<Lens, number> = { all: base.length, current: 0, outdated: 0, foreign: 0, removed: 0, none: 0 };
+    for (const a of base) for (const b of buckets(a.slug)) c[b]++;
+    return c;
+  });
+
+  // Lens definitions paired with the row dot tones so the color story matches.
+  const LENSES: { id: Lens; label: string; tone: string }[] = [
+    { id: "all", label: "All", tone: "" },
+    { id: "current", label: "In sync", tone: "ok" },
+    { id: "outdated", label: "Outdated", tone: "warn" },
+    { id: "foreign", label: "Untracked", tone: "info" },
+    { id: "removed", label: "Missing", tone: "danger" },
+    { id: "none", label: "Not installed", tone: "none" },
+  ];
+  // Show "All" plus any bucket present in the current view (zero-count lenses hide).
+  const visibleLenses = $derived(LENSES.filter((f) => f.id === "all" || lensCounts[f.id] > 0));
+  // If the active lens empties out (e.g. switching to a division with none of
+  // that state), fall back to All so the selection isn't an invisible filter.
+  $effect(() => {
+    if (lens !== "all" && lensCounts[lens] === 0) setLens("all");
+  });
+
+  // The Agents tab LANDS on the division list (not a flat agent list): only when
+  // no division is drilled into AND there's no active search. Picking a division
+  // or typing a query switches to the agent list below.
+  const showDivisions = $derived(ui.agentsCategory === null && !query.trim());
+  // Leaving the landing for the agent list shouldn't carry a stale agent-select
+  // session; entering it shouldn't either (the landing has its own selection).
+  $effect(() => {
+    if (showDivisions && selectMode) exitSelect();
+  });
 
   function pickCategory(slug: string | null) {
     ui.setAgentsCategory(slug);
@@ -228,7 +298,7 @@
           {/if}
         </div>
         <Input bind:value={query} variant="search" placeholder="Search agents by name, role, or vibe…" ariaLabel="Search agents" />
-        {#if visible.length > 0}
+        {#if visible.length > 0 && !showDivisions}
           {#if selectMode}
             <button class="ghost" onclick={exitSelect}>Done</button>
           {:else}
@@ -239,6 +309,24 @@
           <RefreshIcon size={15} />
         </button>
       </div>
+
+      {#if !showDivisions && !selectMode && base.length > 0}
+        <div class="seg" role="tablist" aria-label="Filter by install state">
+          {#each visibleLenses as f (f.id)}
+            <button
+              class="seg-btn"
+              class:on={lens === f.id}
+              role="tab"
+              aria-selected={lens === f.id}
+              onclick={() => setLens(f.id)}
+            >
+              {#if f.tone}<span class="seg-dot" data-tone={f.tone}></span>{/if}
+              {f.label}
+              <span class="seg-c">{lensCounts[f.id]}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
 
       {#if selectMode}
         <div class="bulk-bar">
@@ -282,10 +370,16 @@
         <EmptyState title="Corpus unavailable" body="The agent catalog isn't ready yet.">
           {#snippet icon()}<SearchIcon size={48} />{/snippet}
         </EmptyState>
+      {:else if showDivisions}
+        <DivisionsLanding />
       {:else if visible.length === 0}
         <EmptyState
-          title={query.trim() ? `Nothing matches “${query.trim()}”.` : "No agents in this division."}
-          body="Try a different search or division."
+          title={lens !== "all"
+            ? `No agents are ${(LENSES.find((l) => l.id === lens)?.label ?? "").toLowerCase()} here.`
+            : query.trim()
+              ? `Nothing matches “${query.trim()}”.`
+              : "No agents in this division."}
+          body={lens !== "all" ? "Try a different filter, search, or division." : "Try a different search or division."}
         >
           {#snippet icon()}<SearchIcon size={48} />{/snippet}
         </EmptyState>
@@ -440,6 +534,29 @@
 
   .bulk-bar { display: flex; align-items: center; gap: var(--space-2); }
   .bulk-count { font-size: var(--text-body-sm); color: var(--color-brand); font-weight: var(--fw-medium); }
+
+  /* ── Install-state lens (mirrors the Tools view segmented filter) ── */
+  .seg {
+    display: flex; align-items: center; gap: 2px; flex-wrap: wrap; min-width: 0;
+    margin-top: var(--space-2); padding: 2px;
+    background: var(--color-surface-sunken);
+    border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  }
+  .seg-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 26px; padding: 0 10px; border-radius: var(--radius-sm);
+    background: transparent; color: var(--color-text-secondary);
+    font-size: var(--text-body-sm); cursor: pointer; white-space: nowrap;
+  }
+  .seg-btn:hover { color: var(--color-text-primary); }
+  .seg-btn.on { background: var(--color-surface-raised); color: var(--color-text-primary); box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.08)); }
+  .seg-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--color-text-muted); flex: none; }
+  .seg-dot[data-tone="ok"]     { background: var(--color-success); }
+  .seg-dot[data-tone="warn"]   { background: var(--color-warning); }
+  .seg-dot[data-tone="info"]   { background: var(--color-brand); }
+  .seg-dot[data-tone="danger"] { background: var(--color-danger); }
+  .seg-c { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+  .seg-btn.on .seg-c { color: var(--color-text-secondary); }
   .bulk-menu-wrap { position: relative; margin-left: auto; }
   .bulk-menu {
     position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
