@@ -36,8 +36,17 @@
 
   // All install rows for this agent, and a per-tool grouping for the disclosure.
   const rows = $derived(install.forSlug(agent.slug));
+  // Only offer destinations for tools actually present on this device. A tool
+  // qualifies if it's detected, OR this agent already has a row in it (so an
+  // existing install stays manageable even if detection missed the tool). Before
+  // detection has loaded (tools empty) show everything rather than hiding valid
+  // targets. Mirrors the Tools view's `detected || installed` rule.
+  const detectedTools = $derived(new Set(install.tools.filter((t) => t.detected).map((t) => t.tool)));
+  const haveDetection = $derived(install.tools.length > 0);
   const blocks = $derived(
-    SUPPORTED_TOOLS.map((t) => ({ def: t, installs: rows.filter((r) => r.tool === t.id) })),
+    SUPPORTED_TOOLS
+      .filter((t) => !haveDetection || detectedTools.has(t.id) || rows.some((r) => r.tool === t.id))
+      .map((t) => ({ def: t, installs: rows.filter((r) => r.tool === t.id) })),
   );
   // Summary pills: one per install row, sorted by tool label for a stable scan.
   const installedRows = $derived(
@@ -148,6 +157,9 @@
 
   {#if open}
     <ul class="dm-list">
+      {#if blocks.length === 0}
+        <li class="dm-empty">No supported tools detected on this device. Open <strong>Tools</strong> to check what's installed.</li>
+      {/if}
       {#each blocks as b (b.def.id)}
         <li class="dm-tool">
           <div class="dm-row">
@@ -256,6 +268,7 @@
 
   /* ── Disclosure list ── */
   .dm-list { display: flex; flex-direction: column; gap: 1px; margin-top: var(--space-1); }
+  .dm-empty { padding: var(--space-2) var(--space-2); font-size: var(--text-body-sm); color: var(--color-text-muted); }
   .dm-tool { padding: 4px var(--space-2); border-radius: var(--radius-md); }
   .dm-tool:hover { background: var(--color-surface-sunken); }
   .dm-row { display: flex; align-items: center; gap: var(--space-2); min-height: 32px; }

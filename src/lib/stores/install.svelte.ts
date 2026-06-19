@@ -339,16 +339,28 @@ class InstallStore {
 
   /**
    * Run one action across many installs with a SINGLE reconcile at the end
-   * (calling install()/update()/etc. in a loop would reconcile per item). Each
-   * target is an existing install row, so project tools already know their dest
-   * — no folder prompts. Returns {ok, fail} counts.
+   * (calling install()/update()/etc. in a loop would reconcile per item).
+   *
+   * For `update`/`track`/`uninstall` each target is an EXISTING install row, so
+   * project tools already know their dest — no folder prompts. For `install`
+   * each target is an agent to deploy fresh (used by the divisions landing to
+   * deploy a whole division into a user-scoped tool); project-scoped tools are
+   * excluded by the caller since they'd each need a folder prompt.
+   *
+   * Returns {ok, fail} counts.
    */
   async bulk(
-    action: "update" | "track" | "uninstall",
+    action: "install" | "update" | "track" | "uninstall",
     targets: { slug: string; tool: Tool; projectPath: string | null }[],
   ): Promise<{ ok: number; fail: number }> {
     const cmd =
-      action === "uninstall" ? "uninstall_agent" : action === "track" ? "track_agent" : "update_agent";
+      action === "install"
+        ? "install_agent"
+        : action === "uninstall"
+          ? "uninstall_agent"
+          : action === "track"
+            ? "track_agent"
+            : "update_agent";
     let ok = 0;
     let fail = 0;
     for (const t of targets) {
@@ -362,11 +374,18 @@ class InstallStore {
     await this.reconcile();
     void this.loadTools();
     // ONE summarizing journal entry for the whole batch (not one per item). An
-    // "update" sweep is a Sync; track/uninstall sweeps are generic Bulk ops.
-    // `detail` is a self-contained verb phrase so the row reads naturally; no
-    // single `tool` since a batch can span tools.
+    // "update" sweep is a Sync; install/track/uninstall sweeps are generic Bulk
+    // ops. `detail` is a self-contained verb phrase so the row reads naturally;
+    // no single `tool` since a batch can span tools.
     const plural = (n: number) => `${n} agent${n === 1 ? "" : "s"}`;
-    const verb = action === "update" ? "Updated" : action === "track" ? "Tracked" : "Removed";
+    const verb =
+      action === "install"
+        ? "Installed"
+        : action === "update"
+          ? "Updated"
+          : action === "track"
+            ? "Tracked"
+            : "Removed";
     activity.log({
       action: action === "update" ? "sync" : "bulk",
       outcome: fail > 0 ? "error" : "ok",
