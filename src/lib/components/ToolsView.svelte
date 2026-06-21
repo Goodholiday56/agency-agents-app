@@ -16,6 +16,7 @@
   import XIcon from "@lucide/svelte/icons/x";
   import AlertTriangle from "@lucide/svelte/icons/triangle-alert";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
+  import ChevronDown from "@lucide/svelte/icons/chevron-down";
 
   import Switch from "./Switch.svelte";
   import Input from "./Input.svelte";
@@ -25,7 +26,9 @@
   import { corpus } from "$lib/stores/corpus.svelte";
   import { toast } from "$lib/stores/toast.svelte";
   import { ui } from "$lib/stores/ui.svelte";
-  import { toolAccent, toolMark } from "$lib/util/toolBadge";
+  import { toolAccent, toolMark, toolIcon } from "$lib/util/toolBadge";
+  import { TOOLS } from "$lib/data/toolRegistry";
+  import { resolveCategoryIcon } from "$lib/util/categoryIcon";
   import type { InstalledAgent, InstallState, Tool, ToolInfo } from "$lib/types";
 
   // ── List-pane width (resizable, persisted) ──
@@ -62,7 +65,24 @@
     }
   });
 
-  const tools = $derived(install.tools);
+  // The list is the WHOLE registry (all 12 tools), overlaid with backend
+  // detection/scope for the wired ones. Non-wired tools (recognized upstream but
+  // no native renderer yet) show as a dimmed "not yet installable" row.
+  type ToolRow = ToolInfo & { wired: boolean };
+  const tools = $derived.by<ToolRow[]>(() =>
+    TOOLS.map((m) => {
+      const be = install.tools.find((it) => it.tool === m.id);
+      return {
+        tool: m.id,
+        label: m.label,
+        detected: be?.detected ?? false,
+        scope: be?.scope ?? (m.scope?.user ? "user" : "project"),
+        userDest: be?.userDest ?? null,
+        installedCount: be?.installedCount ?? 0,
+        wired: m.wired,
+      };
+    }),
+  );
 
   // ── Tool lens: default to only installed/discovered tools, with a toggle to
   //    reveal the not-installed (supported-but-absent) ones, mirroring the
@@ -154,7 +174,7 @@
   // Resolve against the VISIBLE (lens-filtered) list, so switching the lens to
   // one that excludes the selected tool closes its detail panel rather than
   // leaving a stale tool shown that isn't in the list.
-  const sel = $derived<ToolInfo | null>(visibleTools.find((t) => t.tool === selectedTool) ?? null);
+  const sel = $derived<ToolRow | null>(visibleTools.find((t) => t.tool === selectedTool) ?? null);
   const selRows = $derived(
     selectedTool
       ? install.installed.filter((i) => i.tool === selectedTool).slice().sort((a, b) => a.name.localeCompare(b.name))
@@ -173,6 +193,62 @@
     const m = new Map<string, number>();
     for (const r of selRows) if (r.projectPath) m.set(r.projectPath, (m.get(r.projectPath) ?? 0) + 1);
     return [...m.entries()].map(([path, count]) => ({ path, count }));
+  });
+
+  // ── Group the agent list by division (collapsible disclosures), mirroring the
+  //    Agents workspace + Teams. Agents missing from the corpus fall into "Other".
+  const OTHER = "__other";
+  const selGroups = $derived.by(() => {
+    const divOf = new Map(corpus.agents.map((a) => [a.slug, a.category]));
+    const m = new Map<string, InstalledAgent[]>();
+    for (const r of selVisible) {
+      const div = divOf.get(r.slug) ?? OTHER;
+      const arr = m.get(div);
+      if (arr) arr.push(r);
+      else m.set(div, [r]);
+    }
+    const out = [...m.entries()].map(([slug, rows]) => ({
+      slug,
+      label: slug === OTHER ? "Other" : corpus.labelOf(slug),
+      color: slug === OTHER ? "#94A3B8" : corpus.colorOf(slug),
+      icon: slug === OTHER ? "HelpCircle" : corpus.iconOf(slug),
+      rows,
+    }));
+    out.sort((a, b) => (a.slug === OTHER ? 1 : b.slug === OTHER ? -1 : a.label.localeCompare(b.label)));
+    return out;
+  });
+
+  // Every division present in the tool (over the UNFILTERED rows, so this is
+  // stable while you type in the agent filter).
+  const selDivisionSlugs = $derived.by(() => {
+    const divOf = new Map(corpus.agents.map((a) => [a.slug, a.category]));
+    const s = new Set<string>();
+    for (const r of selRows) s.add(divOf.get(r.slug) ?? OTHER);
+    return s;
+  });
+
+  let collapsed = $state<Set<string>>(new Set());
+  function toggleGroup(slug: string) {
+    const next = new Set(collapsed);
+    if (next.has(slug)) next.delete(slug);
+    else next.add(slug);
+    collapsed = next;
+  }
+  const allCollapsed = $derived(selGroups.length > 0 && selGroups.every((g) => collapsed.has(g.slug)));
+  function toggleAllGroups() {
+    collapsed = allCollapsed ? new Set() : new Set(selGroups.map((g) => g.slug));
+  }
+  // Default to collapsed: initialize the collapse set to every division the
+  // first time we land on a tool (guarded so installs/removes don't re-collapse
+  // a tool you're actively managing). A search auto-expands (see isOpen below).
+  let collapseInitFor: Tool | null = null;
+  $effect(() => {
+    const t = selectedTool;
+    // Wait for the division set to populate (cold corpus load) before seeding,
+    // so groups stay collapsed by default rather than seeding from an empty set.
+    if (t === collapseInitFor || selDivisionSlugs.size === 0) return;
+    collapseInitFor = t;
+    collapsed = new Set(selDivisionSlugs);
   });
 
   // ── Actions ──
@@ -268,19 +344,23 @@
         {@const inst = installedCount(t.tool)}
         <li>
           <button class="trow" class:sel={selectedTool === t.tool} class:dim={!t.detected && h.total === 0} onclick={() => { selectedTool = t.tool; ui.toolsSelected = t.tool; }}>
-            <span class="badge" style="--accent:{toolAccent(t.tool)}">{toolMark(t.label)}</span>
+            <span class="badge" style="--accent:{toolAccent(t.tool)}">{#if toolIcon(t.tool)}<span class="glyph">{@html toolIcon(t.tool)}</span>{:else}{toolMark(t.label)}{/if}</span>
             <span class="trow-id">
               <span class="trow-top">
                 <span class="trow-name">{t.label}</span>
-                <span class="c-dot" class:on={t.detected} title={t.detected ? "Detected" : "Not detected"}></span>
+                {#if t.wired}<span class="c-dot" class:on={t.detected} title={t.detected ? "Detected" : "Not detected"}></span>{/if}
               </span>
-              <span class="hbar" title="{inst} of {catalogTotal} catalog agents installed">
-                <span class="hseg" style="flex:{inst};background:var(--color-success)"></span>
-                <span class="hseg" style="flex:{Math.max(catalogTotal - inst, 0)}"></span>
-              </span>
-              <span class="trow-sub">
-                {h.total > 0 ? `${h.total} agent${h.total === 1 ? "" : "s"}` : "No agents"}{#if ver} · <span class="trow-ver" title={ver}>{ver}</span>{/if}
-              </span>
+              {#if t.wired}
+                <span class="hbar" title="{inst} of {catalogTotal} catalog agents installed">
+                  <span class="hseg" style="flex:{inst};background:var(--color-success)"></span>
+                  <span class="hseg" style="flex:{Math.max(catalogTotal - inst, 0)}"></span>
+                </span>
+                <span class="trow-sub">
+                  {h.total > 0 ? `${h.total} agent${h.total === 1 ? "" : "s"}` : "No agents"}{#if ver} · <span class="trow-ver" title={ver}>{ver}</span>{/if}
+                </span>
+              {:else}
+                <span class="trow-sub recognized">Recognized · not yet installable</span>
+              {/if}
             </span>
           </button>
         </li>
@@ -306,7 +386,7 @@
     {#if sel}
       <div class="con">
         <div class="con-head">
-          <span class="badge lg" style="--accent:{toolAccent(sel.tool)}">{toolMark(sel.label)}</span>
+          <span class="badge lg" style="--accent:{toolAccent(sel.tool)}">{#if toolIcon(sel.tool)}<span class="glyph">{@html toolIcon(sel.tool)}</span>{:else}{toolMark(sel.label)}{/if}</span>
           <div class="con-id">
             <h2>{sel.label}</h2>
             <span class="con-meta">
@@ -315,10 +395,12 @@
               {#if !sel.detected}· <span class="warn">not detected</span>{/if}
             </span>
           </div>
-          <label class="def-target" title="Preselect this tool in the agent “Use with” menu">
-            <Switch checked={install.isSelected(sel.tool)} ariaLabel="Default install target" onToggle={() => install.toggleSelected(sel.tool)} />
-            <span>Default target</span>
-          </label>
+          {#if sel.wired}
+            <label class="def-target" title="Preselect this tool in the agent “Use with” menu">
+              <Switch checked={install.isSelected(sel.tool)} ariaLabel="Default install target" onToggle={() => install.toggleSelected(sel.tool)} />
+              <span>Default target</span>
+            </label>
+          {/if}
           {#if sel.userDest}
             <button class="ghost" onclick={() => reveal(sel.userDest)} title={sel.userDest}>
               <FolderOpen size={15} /><span>Reveal</span>
@@ -326,6 +408,7 @@
           {/if}
         </div>
 
+        {#if sel.wired}
         {#if sel.userDest}
           <code class="con-path" title={sel.userDest}>{homePath(sel.userDest)}</code>
         {/if}
@@ -370,32 +453,67 @@
           <p class="empty">No agents deployed in {sel.label} yet. Open an agent and use the <strong>Use with</strong> switch to deploy it here.</p>
         {:else}
           <div class="list-head">
-            <h3 class="sub">{selRows.length} agent{selRows.length === 1 ? "" : "s"}</h3>
+            <h3 class="sub">
+              {selRows.length} agent{selRows.length === 1 ? "" : "s"}{#if selGroups.length > 1} · {selGroups.length} divisions{/if}
+            </h3>
+            {#if selGroups.length > 1}
+              <button class="ghost sm" onclick={toggleAllGroups}>{allCollapsed ? "Expand all" : "Collapse all"}</button>
+            {/if}
             <div class="filter"><Input bind:value={agentFilter} variant="search" placeholder="Filter…" ariaLabel="Filter agents" /></div>
           </div>
-          <ul class="agents">
-            {#each selVisible as r (r.dest)}
-              {@const isBusy = install.busy === `${r.slug}:${r.tool}`}
-              <li class="agent">
-                <span class="a-emoji" aria-hidden="true">{emoji(r.slug)}</span>
-                <span class="a-dot" style="background:{STATE_COLOR[r.state]}" title={STATE_LABEL[r.state]}></span>
-                <span class="a-name">{r.name}</span>
-                {#if r.projectPath}<span class="a-proj" title={r.projectPath}>{r.projectPath.split("/").pop()}</span>{/if}
-                <span class="a-acts">
-                  {#if DIFFABLE.includes(r.state)}
-                    <button class="mini" title="See what differs" onclick={() => (diffTarget = r)}><DiffIcon size={13} /></button>
+          {#if selVisible.length === 0}
+            <p class="empty">No agents match “{agentFilter.trim()}”.</p>
+          {:else}
+            <div class="groups">
+              {#each selGroups as g (g.slug)}
+                {@const Icon = resolveCategoryIcon(g.icon)}
+                {@const isOpen = agentFilter.trim() ? true : !collapsed.has(g.slug)}
+                <section class="grp">
+                  <button class="grp-head" onclick={() => toggleGroup(g.slug)} aria-expanded={isOpen}>
+                    <ChevronDown size={15} class={isOpen ? "tv-chev open" : "tv-chev"} />
+                    <span class="grp-ic" style="color:{g.color}"><Icon size={15} /></span>
+                    <span class="grp-label">{g.label}</span>
+                    <span class="grp-count">{g.rows.length}</span>
+                  </button>
+                  {#if isOpen}
+                    <ul class="agents">
+                      {#each g.rows as r (r.dest)}
+                        {@const isBusy = install.busy === `${r.slug}:${r.tool}`}
+                        <li class="agent">
+                          <span class="a-emoji" aria-hidden="true">{emoji(r.slug)}</span>
+                          <span class="a-dot" style="background:{STATE_COLOR[r.state]}" title={STATE_LABEL[r.state]}></span>
+                          <span class="a-name">{r.name}</span>
+                          {#if r.projectPath}<span class="a-proj" title={r.projectPath}>{r.projectPath.split("/").pop()}</span>{/if}
+                          <span class="a-acts">
+                            {#if DIFFABLE.includes(r.state)}
+                              <button class="mini" title="See what differs" onclick={() => (diffTarget = r)}><DiffIcon size={13} /></button>
+                            {/if}
+                            {#if r.state === "foreign"}
+                              <button class="mini" title="Track" disabled={isBusy} onclick={() => quick(() => install.track(r.slug, r.tool, r.projectPath), `Tracking ${r.name}`)}><PlusIcon size={13} /></button>
+                            {/if}
+                            {#if r.state !== "current"}
+                              <button class="mini" title="Update from catalog" disabled={isBusy} onclick={() => quick(() => install.update(r.slug, r.tool, r.projectPath), `Updated ${r.name}`)}><RefreshIcon size={13} /></button>
+                            {/if}
+                            <button class="mini danger" title="Remove" disabled={isBusy} onclick={() => quick(() => install.uninstall(r.slug, r.tool, r.projectPath), `Removed ${r.name}`)}><XIcon size={13} /></button>
+                          </span>
+                        </li>
+                      {/each}
+                    </ul>
                   {/if}
-                  {#if r.state === "foreign"}
-                    <button class="mini" title="Track" disabled={isBusy} onclick={() => quick(() => install.track(r.slug, r.tool, r.projectPath), `Tracking ${r.name}`)}><PlusIcon size={13} /></button>
-                  {/if}
-                  {#if r.state !== "current"}
-                    <button class="mini" title="Update from catalog" disabled={isBusy} onclick={() => quick(() => install.update(r.slug, r.tool, r.projectPath), `Updated ${r.name}`)}><RefreshIcon size={13} /></button>
-                  {/if}
-                  <button class="mini danger" title="Remove" disabled={isBusy} onclick={() => quick(() => install.uninstall(r.slug, r.tool, r.projectPath), `Removed ${r.name}`)}><XIcon size={13} /></button>
-                </span>
-              </li>
-            {/each}
-          </ul>
+                </section>
+              {/each}
+            </div>
+          {/if}
+        {/if}
+        {:else}
+          <div class="recognized-detail">
+            <span class="rd-badge">Recognized</span>
+            <p>
+              This tool is in the catalog, but the app can't install agents to it
+              yet — there's no native renderer for its output format. It'll show
+              up here for management once support lands.
+            </p>
+          </div>
         {/if}
       </div>
     {:else}
@@ -480,6 +598,7 @@
   .c-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--color-text-muted); opacity: 0.4; flex: none; }
   .c-dot.on { background: var(--color-success); opacity: 1; }
   .trow-sub { font-size: var(--text-caption); color: var(--color-text-muted); display: flex; gap: 4px; min-width: 0; }
+  .trow-sub.recognized { font-style: italic; opacity: 0.85; }
   .trow-ver { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hbar { display: flex; height: 5px; border-radius: 999px; overflow: hidden; background: var(--color-surface-sunken); }
   .hseg { display: block; }
@@ -493,6 +612,8 @@
     box-shadow: inset 0 1px 0 color-mix(in srgb, white 25%, transparent);
   }
   .badge.lg { width: 44px; height: 44px; border-radius: 12px; font-size: 20px; }
+  .badge .glyph { display: inline-flex; align-items: center; justify-content: center; }
+  .badge .glyph :global(svg) { width: 1em; height: 1em; }
 
   /* ── resize ── */
   .tw-resize { display: flex; flex: none; }
@@ -536,11 +657,28 @@
   .proj-count { font-size: var(--text-caption); color: var(--color-text-muted); }
 
   .empty { font-size: var(--text-body-sm); color: var(--color-text-muted); line-height: var(--lh-normal); }
-  .list-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .list-head { display: flex; align-items: center; gap: var(--space-3); }
+  .list-head .sub { flex: 1; min-width: 0; }
+  .ghost.sm { height: 28px; }
   .filter { width: 180px; }
   .filter :global(.wrap) { width: 100%; }
 
-  .agents { display: flex; flex-direction: column; gap: 1px; }
+  /* ── Division groups (collapsible) ── */
+  .groups { display: flex; flex-direction: column; gap: 2px; }
+  .grp { display: flex; flex-direction: column; }
+  .grp-head {
+    display: flex; align-items: center; gap: var(--space-2);
+    width: 100%; padding: var(--space-2);
+    background: transparent; cursor: pointer; text-align: left; border-radius: var(--radius-sm);
+  }
+  .grp-head:hover { background: var(--color-surface-sunken); }
+  :global(.tv-chev) { color: var(--color-text-muted); transition: transform var(--motion-duration-fast, 120ms) ease; transform: rotate(-90deg); flex: none; }
+  :global(.tv-chev.open) { transform: rotate(0deg); }
+  .grp-ic { flex: none; display: inline-flex; }
+  .grp-label { flex: 1; min-width: 0; font-weight: var(--fw-semibold); color: var(--color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grp-count { flex: none; min-width: 20px; text-align: center; font-size: var(--text-caption); color: var(--color-text-muted); font-variant-numeric: tabular-nums; background: var(--color-surface-sunken); border-radius: var(--radius-full); padding: 1px 7px; }
+
+  .agents { display: flex; flex-direction: column; gap: 1px; padding-left: var(--space-4); }
   .agent { display: flex; align-items: center; gap: var(--space-2); padding: 5px var(--space-2); border-radius: var(--radius-sm); }
   .agent:hover { background: var(--color-surface-sunken); }
   .a-emoji { font-size: 15px; line-height: 1; flex: none; }
@@ -556,6 +694,10 @@
   .mini:hover:not(:disabled) { background: var(--color-surface); color: var(--color-text-primary); }
   .mini.danger:hover:not(:disabled) { background: var(--color-danger); color: #fff; }
   .mini:disabled { opacity: 0.4; cursor: default; }
+
+  .recognized-detail { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-2) 0; }
+  .rd-badge { font-size: var(--text-caption); font-weight: var(--fw-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-secondary); background: var(--color-surface-sunken); border-radius: var(--radius-full); padding: 2px 10px; }
+  .recognized-detail p { font-size: var(--text-body-sm); color: var(--color-text-secondary); line-height: var(--lh-normal); max-width: 52ch; }
 
   .d-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3); color: var(--color-text-muted); }
   .d-empty p { font-size: var(--text-body-sm); }
