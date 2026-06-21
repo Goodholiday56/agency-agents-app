@@ -27,6 +27,7 @@
     { kind: "command", id: "projects",  label: "Open Projects",  shortcut: shortcut("4"), section: "Nav", run: () => ui.setSection("projects") },
     { kind: "command", id: "activity",  label: "Open Activity",  shortcut: shortcut("5"), section: "Nav", run: () => ui.setSection("activity") },
     { kind: "command", id: "drawer",    label: "Toggle Activity drawer", shortcut: shortcut("L"), section: "View", run: () => ui.toggleDrawer() },
+    { kind: "command", id: "playbook",  label: "Open the Playbook", section: "Help", run: () => ui.openPlaybook() },
   ];
 
   let commandHits = $derived.by(() => {

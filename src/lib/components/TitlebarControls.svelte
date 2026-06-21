@@ -4,6 +4,7 @@
   import Moon from "@lucide/svelte/icons/moon";
   import Monitor from "@lucide/svelte/icons/monitor";
   import SettingsIcon from "@lucide/svelte/icons/settings";
+  import BookOpenIcon from "@lucide/svelte/icons/book-open";
   import Heart from "@lucide/svelte/icons/heart";
   import Check from "@lucide/svelte/icons/check";
   import GithubMarkIcon from "./GithubMarkIcon.svelte";
@@ -133,6 +134,15 @@
     aria-expanded={themeOpen}
   >
     <ActiveIcon size={14} />
+  </button>
+  <button
+    type="button"
+    class="ctrl"
+    onclick={() => ui.openPlaybook()}
+    title="The Playbook — how to use your agents"
+    aria-label="Open the Playbook"
+  >
+    <BookOpenIcon size={14} />
   </button>
   <button
     type="button"

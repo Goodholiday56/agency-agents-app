@@ -43,6 +43,8 @@ The core idea is simple: AI tools do not share a package database, so the app ke
 - **Offline-first catalog** — ships with a bundled corpus baseline and can use a local or managed clone of `agency-agents`.
 - **Cross-platform shell** — Tauri 2 + Svelte 5 frontend with native macOS chrome and opaque native windows on Windows/Linux.
 
+New to directing agents? See **[docs/USING-AGENTS.md](./docs/USING-AGENTS.md)** — the Playbook: how to get shipped, tested work out of the catalog (also in-app via the title-bar book icon).
+
 ## Supported Install Targets
 
 The app currently installs to the renderer-backed targets that have deterministic byte parity with the upstream `agency-agents` converter:
