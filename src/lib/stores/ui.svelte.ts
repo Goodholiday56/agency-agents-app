@@ -12,6 +12,8 @@ interface NavLocation {
   section: SidebarSection;
   agentsCategory: string | null;
   agentsSelected: string | null;
+  projectsSelected: string | null;
+  teamsSelected: string | null;
 }
 
 /** Default width of the package detail pane in pixels — the original fixed width. */
@@ -122,6 +124,8 @@ class UiStore {
   settingsInitialSection: SettingsSection | null = $state(null);
   /** About modal — native menu "About Agency Agents" + sidebar footer link. */
   aboutOpen: boolean = $state(false);
+  /** Playbook modal — "how to get real work out of your agents" (title-bar ?). */
+  playbookOpen: boolean = $state(false);
   theme: ThemePreference = $state("system");
   /** Active category ("division") filter for the Agents workspace; null = all.
       Lifted into ui so division pills can deep-link to it and so back/forward
@@ -133,6 +137,12 @@ class UiStore {
   /** Tool selected in the Tools console; null = let it auto-pick. Set by the
       Dashboard "Coverage by tool" rows so a click lands on that tool's console. */
   toolsSelected: Tool | null = $state(null);
+  /** Absolute path of the project open in the Projects detail pane; null = the
+      project list. In ui so the title-bar back/forward restores it. */
+  projectsSelected: string | null = $state(null);
+  /** Key of the team open in the Teams detail pane (`preset:<slug>` /
+      `saved:<id>`); null = the team list. In ui so back/forward restores it. */
+  teamsSelected: string | null = $state(null);
 
   /** Back/forward history of app locations + the cursor into it. */
   navStack: NavLocation[] = $state([]);
@@ -181,10 +191,21 @@ class UiStore {
 
   setSection(s: SidebarSection) {
     this.section = s;
-    // Navigating to ANY section closes the package detail slide-over.
+    // Navigating to ANY section closes the package detail slide-over and resets
+    // the Projects detail to its list (a fresh sidebar click lands on the list).
     this.selectedPackage = null;
+    this.projectsSelected = null;
+    this.teamsSelected = null;
     this.commitNav();
   }
+
+  /** Open the Projects detail pane for a project path (null = back to the list).
+      A nav location, so the title-bar back button returns to the list. */
+  selectProject(path: string | null) { this.projectsSelected = path; this.selectedPackage = null; this.commitNav(); }
+
+  /** Open the Teams detail pane for a team key (null = back to the list).
+      A nav location, so the title-bar back button returns to the list. */
+  selectTeam(key: string | null) { this.teamsSelected = key; this.selectedPackage = null; this.commitNav(); }
 
   /** Open the Tools console with `tool` preselected (null = let it auto-pick). */
   openTools(tool: Tool | null = null) {
@@ -201,6 +222,8 @@ class UiStore {
     this.agentsSelected = null;
     this.section = "personas";
     this.selectedPackage = null;
+    this.projectsSelected = null;
+    this.teamsSelected = null;
     this.applyingNav = false;
     this.commitNav();
   }
@@ -214,6 +237,8 @@ class UiStore {
     this.agentsCategory = category;
     this.section = "personas";
     this.selectedPackage = null;
+    this.projectsSelected = null;
+    this.teamsSelected = null;
     this.applyingNav = false;
     this.commitNav();
   }
@@ -243,6 +268,8 @@ class UiStore {
       section: this.section,
       agentsCategory: this.agentsCategory,
       agentsSelected: this.agentsSelected,
+      projectsSelected: this.projectsSelected,
+      teamsSelected: this.teamsSelected,
     };
   }
   /** Push the current location onto history (truncating any forward entries),
@@ -255,7 +282,9 @@ class UiStore {
       cur &&
       cur.section === loc.section &&
       cur.agentsCategory === loc.agentsCategory &&
-      cur.agentsSelected === loc.agentsSelected
+      cur.agentsSelected === loc.agentsSelected &&
+      cur.projectsSelected === loc.projectsSelected &&
+      cur.teamsSelected === loc.teamsSelected
     ) {
       return;
     }
@@ -269,6 +298,8 @@ class UiStore {
     this.section = loc.section;
     this.agentsCategory = loc.agentsCategory;
     this.agentsSelected = loc.agentsSelected;
+    this.projectsSelected = loc.projectsSelected;
+    this.teamsSelected = loc.teamsSelected;
     this.selectedPackage = null;
     this.applyingNav = false;
   }
@@ -308,6 +339,9 @@ class UiStore {
 
   openAbout() { this.aboutOpen = true; }
   closeAbout() { this.aboutOpen = false; }
+
+  openPlaybook() { this.playbookOpen = true; }
+  closePlaybook() { this.playbookOpen = false; }
 
   // ---------------- Settings (Phase 12b) ----------------
 
