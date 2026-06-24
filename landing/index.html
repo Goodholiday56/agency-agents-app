@@ -13,9 +13,9 @@
 
   <!-- Primary meta -->
   <title>Agency Agents — a native installer for AI agents (Tauri + Svelte)</title>
-  <meta name="description" content="Browse, install, and track AI agent personas across Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, and Copilot. Full source. MIT licensed. Local-first, no telemetry, no accounts.">
+  <meta name="description" content="Browse, install, and track AI agent personas across Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, Copilot, and Osaurus. Full source. MIT licensed. Local-first, no telemetry, no accounts.">
   <meta name="author" content="Michael Sitarzewski">
-  <meta name="keywords" content="AI agents, agent personas, Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, GitHub Copilot, Tauri, Svelte, Rust, native, MIT, open source, desktop app">
+  <meta name="keywords" content="AI agents, agent personas, Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, GitHub Copilot, Osaurus, Tauri, Svelte, Rust, native, MIT, open source, desktop app">
 
   <!-- Favicons & app icons -->
   <link rel="icon" href="/favicon.ico" sizes="any">
@@ -58,13 +58,13 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "Agency Agents",
-    "description": "A native installer for AI agents. Browse, install, and track agent personas across Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, and Copilot. Full source. MIT licensed. No telemetry, no accounts.",
+    "description": "A native installer for AI agents. Browse, install, and track agent personas across Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, Copilot, and Osaurus. Full source. MIT licensed. No telemetry, no accounts.",
     "applicationCategory": "DeveloperApplication",
     "applicationSubCategory": "AI Agent Manager",
     "operatingSystem": "macOS 13+, Windows, Linux",
     "url": "https://agencyagents.app/",
     "downloadUrl": "https://github.com/msitarzewski/agency-agents-app/releases/latest",
-    "softwareVersion": "0.1.0",
+    "softwareVersion": "0.2.0",
     "license": "https://opensource.org/licenses/MIT",
     "author": {
       "@type": "Person",
@@ -89,7 +89,7 @@
       <img src="/agency-agents.png" alt="Agency Agents icon" class="hero-icon" width="160" height="160">
       <h1>Agency Agents</h1>
       <p class="tagline">A native installer for AI agents.</p>
-      <p class="sub">Browse the agent catalog by division and role. Inspect a persona before you install it. Deploy deterministic renders into <strong>Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, and Copilot</strong> — then track what the app wrote, detect drift, update, or back it out. A small, fast <strong>Tauri 2</strong> app (Rust + Svelte 5). The local install database your AI tools don't share.</p>
+      <p class="sub">Browse the agent catalog by division and role. Inspect a persona before you install it. Deploy deterministic renders into <strong>Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, Copilot, and Osaurus</strong> — then track what the app wrote, detect drift, update, or back it out. A small, fast <strong>Tauri 2</strong> app (Rust + Svelte 5). The local install database your AI tools don't share.</p>
       <div class="cta-row">
         <a class="btn btn-primary" href="https://github.com/msitarzewski/agency-agents-app/releases/latest">Download</a>
         <a class="btn btn-secondary" href="https://github.com/msitarzewski/agency-agents-app">Source on GitHub</a>
@@ -104,7 +104,7 @@
       <figure class="hero-shot">
         <picture>
           <source srcset="/screenshots/dashboard-dark.png" media="(prefers-color-scheme: dark)">
-          <img src="/screenshots/dashboard-light.png" alt="Agency Agents — Dashboard: 232 agents available, 239 installed, install-health donut, coverage by tool, per-tool cross-tool coverage donuts, and the catalog-by-division bar." loading="lazy">
+          <img src="/screenshots/dashboard-light.png" alt="Agency Agents — Dashboard: 232 agents available, 246 installed, install-health donut, coverage by tool, per-tool cross-tool coverage donuts, and the catalog-by-division bar." loading="lazy">
         </picture>
         <figcaption>The Dashboard — install health, cross-tool coverage, and the catalog by division.</figcaption>
       </figure>
@@ -140,13 +140,23 @@
         </div>
 
         <div class="feature">
-          <h3>Loadouts</h3>
-          <p>Save and restore groups of agents as portable Agentfiles. Stand up a fresh machine, or share a curated set, in one move.</p>
+          <h3>Teams</h3>
+          <p>App-bundled preset teams plus your own saved teams — open one for a detail panel with Deploy built in. Still exports and imports portable Agentfiles to stand up a fresh machine or share a curated set.</p>
+        </div>
+
+        <div class="feature">
+          <h3>Projects</h3>
+          <p>Scope installs to a specific project, not just globally. A dedicated Projects panel and a destinations &times; tools install grid let a repo get exactly the agents and tools it needs.</p>
+        </div>
+
+        <div class="feature">
+          <h3>Auto-update</h3>
+          <p>The app checks a signed manifest and installs new versions in place &mdash; verified against an embedded key, one click to install and relaunch. New in v0.2.0, on Apple Silicon and Intel.</p>
         </div>
 
         <div class="feature">
           <h3>Deterministic renderers</h3>
-          <p>Per-tool converters with byte-for-byte parity against the upstream <code>agency-agents</code> converter — Claude Code, Codex, Gemini CLI, Copilot, Qwen, Cursor, and opencode. What the app writes is exactly what the catalog defines.</p>
+          <p>Per-tool converters with byte-for-byte parity against the upstream <code>agency-agents</code> converter — Claude Code, Codex, Gemini CLI, Copilot, Qwen, Cursor, opencode, and Osaurus. Tool knowledge is a single shared <code>tools.json</code>, so what the app writes is exactly what the catalog defines.</p>
         </div>
 
         <div class="feature">
@@ -172,6 +182,7 @@
         <div class="badge"><code>Qwen Code</code></div>
         <div class="badge"><code>Cursor</code></div>
         <div class="badge"><code>opencode</code></div>
+        <div class="badge"><code>Osaurus</code></div>
       </div>
       <p class="small-note">Renderer-backed targets with deterministic byte parity to the upstream converter. More integrations (Antigravity, Aider, Windsurf, OpenClaw, Kimi) need additional app work before they're exposed as first-class installs.</p>
     </section>
@@ -221,7 +232,7 @@ npm run tauri build      # bundles for your platform in src-tauri/target/release
         <a href="https://github.com/msitarzewski/agency-agents-app/blob/main/CONTRIBUTING.md">Contributing</a> ·
         <a href="https://github.com/sponsors/msitarzewski">♥ Sponsor</a>
       </p>
-      <p class="copy">A native control surface for the <a href="https://github.com/msitarzewski/agency-agents">agency-agents</a> catalog, which does all the actual curation.</p>
+      <p class="copy">A native control surface for the <a href="https://github.com/msitarzewski/agency-agents">agency-agents</a> catalog, which does all the actual curation &mdash; and where this app's transforms (now including Osaurus) and the shared <code>tools.json</code> tool manifest are contributed first.</p>
       <p class="copy">Built with ♥ by <a href="https://github.com/msitarzewski/agency-agents">Agency Agents</a> and <a href="https://claude.com/claude-code">Claude</a>, by the creator of Agency Agents.</p>
       <p class="copy">© 2026 Michael Sitarzewski.</p>
     </div>

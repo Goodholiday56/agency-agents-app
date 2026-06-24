@@ -18,7 +18,7 @@ It is full source, MIT-licensed, local-first, and does not run telemetry.
 
 ## Why This Exists
 
-The `agency-agents` repo is a useful catalog of specialist AI agent personas, but every coding tool has its own agent format and install path. Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, and Copilot all want similar content in slightly different places.
+The `agency-agents` repo is a useful catalog of specialist AI agent personas, but every coding tool has its own agent format and install path. Claude Code, Codex, Cursor, Gemini CLI, Qwen, opencode, Copilot, and Osaurus all want similar content in slightly different places.
 
 Agency Agents gives that catalog a native control surface:
 
@@ -40,7 +40,8 @@ Agency Agents is organized around four pillars — **Agents** (who), **Tools** (
 - **Teams** — app-bundled preset teams plus your own saved teams; open a team for a detail panel with Deploy built in. (Teams replaces the earlier "Loadouts" concept; Agentfile export/import remains.)
 - **Projects** — project-scoped installs with a dedicated panel and master/detail navigation, so a project gets exactly the agents and tools it needs.
 - **Install tracking** — records every app-managed install with source hash, rendered hash, tool, destination, scope, and project path where relevant.
-- **Reconciliation** — classifies installed files as current, outdated, modified, removed, or foreign by re-rendering canonical source and comparing bytes.
+- **Reconciliation** — classifies installed files as current, outdated, modified, removed, or foreign by re-rendering canonical source and comparing bytes. The Dashboard surfaces what "needs attention," and the Agents pane filters to exactly those.
+- **Auto-update** — checks a signed update manifest and installs new versions in place, verified against an embedded key, with one-click install + relaunch. Live for macOS (Apple Silicon + Intel) as of v0.2.0; opt-in and gated by Settings.
 - **Tool registry** — tool knowledge lives in a single upstream-owned `tools.json` shared by the backend and frontend; adding a tool is editing one JSON entry, and installability is derived from whether the app ships a renderer for that tool's format.
 - **Dashboard** — install health, a Global-vs-Projects install sunburst, cross-tool coverage merged with the catalog-by-division view (linked hover), and deep links back into the workspace.
 - **GitHub integration** — optional OAuth Device Flow for GitHub-backed app features. Tokens are stored in the platform keychain and are never returned to the frontend.
@@ -189,7 +190,7 @@ The highest-value areas before 1.0 are:
 
 ## Acknowledgments
 
-- [Agency Agents](https://github.com/msitarzewski/agency-agents) — the source catalog and upstream converter/install scripts.
+- [Agency Agents](https://github.com/msitarzewski/agency-agents) — the source catalog and upstream converter/install scripts. The app contributes its transforms back upstream: v0.2.0's Osaurus integration and the shared `tools.json` tool manifest (the twin of `divisions.json`) landed there first.
 - [Tauri](https://tauri.app) — native app shell without the Electron footprint.
 - [Svelte](https://svelte.dev) — the frontend runtime.
 
