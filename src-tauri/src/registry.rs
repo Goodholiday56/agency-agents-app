@@ -98,6 +98,11 @@ pub struct ToolMeta {
     /// CONTRACT: same `format` ⇒ byte-identical output.
     #[serde(default)]
     pub format: Option<String>,
+    /// Install MECHANISM, upstream truth: "per-agent" (N rendered files),
+    /// "roster" (one aggregate file), or "plugin" (a router plugin — Hermes).
+    /// A `plugin` tool is never app-installable; the CLI owns its install.
+    #[serde(default)]
+    pub install_kind: Option<String>,
     /// "source" (keep the corpus filename) or "name" (slugify frontmatter name);
     /// null for single-file roster formats (aider/windsurf).
     #[serde(default)]
@@ -117,8 +122,15 @@ impl ToolMeta {
     pub fn supports_project(&self) -> bool {
         self.scope.as_ref().is_some_and(|s| s.project)
     }
-    /// Installable in this app: we ship a native renderer for its `format`.
+    /// Installable in this app: we ship a native renderer for its `format` AND it
+    /// installs as per-agent/roster files. Aggregate `plugin` integrations (e.g.
+    /// Hermes) install one router plugin, not per-agent files — the CLI owns them,
+    /// so they're never app-installable even if a renderer existed. (per-agent,
+    /// roster, or a missing kind all fall through to the format check.)
     pub fn installable(&self) -> bool {
+        if self.install_kind.as_deref() == Some("plugin") {
+            return false;
+        }
         self.format.as_deref().is_some_and(|f| IMPLEMENTED_FORMATS.contains(&f))
     }
 }
@@ -171,7 +183,7 @@ mod tests {
 
     #[test]
     fn registry_loads_and_derives_installable() {
-        assert_eq!(all().len(), 13, "expected the full bundled tool set");
+        assert_eq!(all().len(), 14, "expected the full bundled tool set");
         // The eight tools whose format we render are installable.
         for id in [
             "claudeCode", "codex", "geminiCli", "copilot", "qwen", "cursor", "opencode", "osaurus",
@@ -190,5 +202,14 @@ mod tests {
             assert!(!m.installable(), "{id} is recognized-only in the app");
             assert!(m.format.is_some(), "{id} still has an upstream format");
         }
+    }
+
+    #[test]
+    fn plugin_tools_are_never_installable() {
+        // Hermes installs ONE router plugin (installKind "plugin"), not per-agent
+        // files — recognized-only / CLI-only regardless of renderer coverage.
+        let h = get("hermes").expect("hermes in the refreshed catalog");
+        assert_eq!(h.install_kind.as_deref(), Some("plugin"));
+        assert!(!h.installable(), "a plugin tool is never app-installable");
     }
 }

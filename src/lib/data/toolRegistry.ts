@@ -33,6 +33,9 @@ export interface ToolMeta {
   version?: { bin: string; args: string[] };
   /** Renderer contract: same `format` ⇒ byte-identical output. */
   format?: string;
+  /** Install mechanism (upstream truth): "per-agent" | "roster" | "plugin".
+      A "plugin" tool (e.g. Hermes) is never app-installable — the CLI owns it. */
+  installKind?: string;
   slugFrom?: string | null;
   slugPrefix?: string;
   dest?: { user: string[]; project: string[] };
@@ -78,6 +81,7 @@ export function toolMeta(id: string): ToolMeta | null {
 
 /** Whether this app ships a native renderer for the tool's format. */
 export function isInstallable(t: ToolMeta): boolean {
+  if (t.installKind === "plugin") return false;
   return t.format != null && IMPLEMENTED_FORMATS.has(t.format);
 }
 
