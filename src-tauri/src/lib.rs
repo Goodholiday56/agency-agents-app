@@ -54,6 +54,17 @@ pub fn updater_pubkey() -> &'static str {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // WebKitGTK's DMABUF renderer aborts with "Could not create default EGL
+    // display: EGL_BAD_PARAMETER" on a lot of Linux GPU/driver stacks (Arch,
+    // NVIDIA, Wayland, newer Mesa) — the webview never comes up (issue #641).
+    // Forcing the non-DMABUF path before GTK/WebKit initializes fixes it, at a
+    // negligible rendering cost. Only touch it when the user hasn't set it
+    // themselves, so an explicit override still wins.
+    #[cfg(target_os = "linux")]
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     // Best-effort tracing setup — silent if RUST_LOG is unset.
     let _ = tracing_subscriber::fmt()
         .with_env_filter(
