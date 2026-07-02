@@ -12,6 +12,7 @@
    * Dependency-free (CSS grid + color-mix). Clicking a populated cell jumps to
    * the Agents workspace filtered to your installed set.
    */
+  import { t } from "$lib/stores/i18n.svelte";
   import EmptyState from "./EmptyState.svelte";
   import LayersIcon from "@lucide/svelte/icons/layers";
   import { corpus } from "$lib/stores/corpus.svelte";
@@ -67,37 +68,37 @@
 </script>
 
 {#if data.rows.length === 0}
-  <EmptyState title="No coverage yet" body="Install agents across your tools to see the cross-tool map here.">
+  <EmptyState title={t("health.noCrossCoverage")} body={t("health.noCrossCoverageBody")}>
     {#snippet icon()}<LayersIcon size={40} />{/snippet}
   </EmptyState>
 {:else}
   <div class="cm" style="--cols:{data.tools.length}">
     <!-- header -->
     <div class="cm-row cm-head">
-      <div class="cm-cat cm-corner">Division</div>
-      {#each data.tools as t (t.id)}
-        <div class="cm-th" title={`${t.label} · ${data.toolTotals[t.id] ?? 0} installed`}>
-          <span class="cm-th-l">{toolShort(t.id)}</span>
-          <span class="cm-th-n">{data.toolTotals[t.id] ?? 0}</span>
+      <div class="cm-cat cm-corner">{t("health.division")}</div>
+      {#each data.tools as tool (tool.id)}
+        <div class="cm-th" title={`${tool.label} · ${data.toolTotals[tool.id] ?? 0} installed`}>
+          <span class="cm-th-l">{toolShort(tool.id)}</span>
+          <span class="cm-th-n">{data.toolTotals[tool.id] ?? 0}</span>
         </div>
       {/each}
     </div>
     <!-- body -->
     {#each data.rows as r (r.cat)}
       <div class="cm-row">
-        <button class="cm-cat" title={`See all ${corpus.labelOf(r.cat)} agents`} onclick={() => ui.openDivision(r.cat)}>
+        <button class="cm-cat" title={t("health.seeAll", { label: corpus.labelOf(r.cat) })} onclick={() => ui.openDivision(r.cat)}>
           <span class="truncate">{corpus.labelOf(r.cat)}</span>
           <span class="cm-cat-n">{r.catTotal}</span>
         </button>
-        {#each data.tools as t (t.id)}
-          {@const n = r.counts[t.id] ?? 0}
+        {#each data.tools as tool (tool.id)}
+          {@const n = r.counts[tool.id] ?? 0}
           {@const frac = coverage(n, r.catTotal)}
           <button
             class="cm-cell"
             class:strong={strong(frac)}
             class:empty={n === 0}
             style={cellStyle(frac)}
-            title={`${corpus.labelOf(r.cat)} × ${t.label}: ${n} of ${r.catTotal} (${Math.round(frac * 100)}%)`}
+            title={t("coverage.cellTitle", { label: corpus.labelOf(r.cat), tool: tool.label, n, total: r.catTotal, pct: Math.round(frac * 100) })}
             disabled={n === 0}
             onclick={() => ui.openDivision(r.cat)}
           >{n > 0 ? n : ""}</button>

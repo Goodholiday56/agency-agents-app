@@ -26,6 +26,7 @@
   import { corpus } from "$lib/stores/corpus.svelte";
   import { toast } from "$lib/stores/toast.svelte";
   import { ui } from "$lib/stores/ui.svelte";
+  import { t as tt } from "$lib/stores/i18n.svelte";
   import { toolAccent, toolMark, toolIcon } from "$lib/util/toolBadge";
   import { TOOLS, isInstallable } from "$lib/data/toolRegistry";
   import { resolveCategoryIcon } from "$lib/util/categoryIcon";
@@ -103,10 +104,10 @@
   function toolPresent(t: ToolInfo): boolean {
     return t.detected || health(t.tool).total > 0;
   }
-  const TLENS: { id: ToolLens; label: string }[] = [
-    { id: "installed", label: "Installed" },
-    { id: "uninstalled", label: "Not installed" },
-    { id: "all", label: "All" },
+  const TLENS: { id: ToolLens; labelKey: string }[] = [
+    { id: "installed", labelKey: "tools.installed" },
+    { id: "uninstalled", labelKey: "tools.notInstalled" },
+    { id: "all", labelKey: "tools.all" },
   ];
   function lensMatch(l: ToolLens, t: ToolInfo): boolean {
     if (l === "all") return true;
@@ -121,13 +122,14 @@
     foreign: "var(--color-brand)",
     removed: "var(--color-danger)",
   };
-  const STATE_LABEL: Record<InstallState, string> = {
-    current: "In sync",
-    outdated: "Outdated",
-    modified: "Modified",
-    foreign: "Untracked",
-    removed: "Missing",
+  const STATE_KEY: Record<InstallState, string> = {
+    current: "health.inSync",
+    outdated: "health.outdated",
+    modified: "health.modified",
+    foreign: "health.untracked",
+    removed: "health.missing",
   };
+  function stateLabel(s: InstallState): string { return tt(STATE_KEY[s]); }
   const DIFFABLE: InstallState[] = ["foreign", "modified", "outdated"];
   const ORDER: InstallState[] = ["current", "outdated", "modified", "foreign", "removed"];
 
@@ -313,7 +315,7 @@
   <!-- ── List pane ── -->
   <div class="list-pane" style="width:{listWidth}px">
     <header class="lp-head">
-      <div class="seg" role="tablist" aria-label="Filter tools">
+      <div class="seg" role="tablist" aria-label={tt("tools.filterTools")}>
         {#each TLENS as f (f.id)}
           <button
             class="seg-btn"
@@ -322,11 +324,11 @@
             aria-selected={toolLens === f.id}
             onclick={() => setToolLens(f.id)}
           >
-            {f.label}
+            {tt(f.labelKey)}
           </button>
         {/each}
       </div>
-      <button class="ghost icon" disabled={busy} onclick={rescan} title="Re-detect tools, versions + installs" aria-label="Rescan">
+      <button class="ghost icon" disabled={busy} onclick={rescan} title={tt("tools.rescanTitle")} aria-label={tt("tools.rescanAria")}>
         <RefreshIcon size={15} />
       </button>
     </header>
@@ -348,7 +350,7 @@
             <span class="trow-id">
               <span class="trow-top">
                 <span class="trow-name">{t.label}</span>
-                {#if t.wired}<span class="c-dot" class:on={t.detected} title={t.detected ? "Detected" : "Not detected"}></span>{/if}
+                {#if t.wired}<span class="c-dot" class:on={t.detected} title={t.detected ? tt("tools.detected") : tt("tools.notDetected")}></span>{/if}
               </span>
               {#if t.wired}
                 <span class="hbar" title="{inst} of {catalogTotal} catalog agents installed">
@@ -390,20 +392,20 @@
           <div class="con-id">
             <h2>{sel.label}</h2>
             <span class="con-meta">
-              {sel.scope === "user" ? "user-global" : "project-scoped"}
+              {sel.scope === "user" ? tt("tools.userGlobal") : tt("tools.projectScoped")}
               {#if install.versionOf(sel.tool)}· {install.versionOf(sel.tool)}{/if}
-              {#if !sel.detected}· <span class="warn">not detected</span>{/if}
+              {#if !sel.detected}· <span class="warn">{tt("tools.notDetectedWarning")}</span>{/if}
             </span>
           </div>
           {#if sel.wired}
-            <label class="def-target" title="Preselect this tool in the agent “Use with” menu">
+            <label class="def-target" title="Preselect this tool in the agent 'Use with' menu">
               <Switch checked={install.isSelected(sel.tool)} ariaLabel="Default install target" onToggle={() => install.toggleSelected(sel.tool)} />
               <span>Default target</span>
             </label>
           {/if}
           {#if sel.userDest}
             <button class="ghost" onclick={() => reveal(sel.userDest)} title={sel.userDest}>
-              <FolderOpen size={15} /><span>Reveal</span>
+              <FolderOpen size={15} /><span>{tt("tools.reveal")}</span>
             </button>
           {/if}
         </div>
@@ -417,7 +419,7 @@
           <div class="legend">
             {#each ORDER as s (s)}
               {#if selHealth[s] > 0}
-                <span class="leg"><span class="dot" style="background:{STATE_COLOR[s]}"></span>{selHealth[s]} {STATE_LABEL[s]}</span>
+                <span class="leg"><span class="dot" style="background:{STATE_COLOR[s]}"></span>{selHealth[s]} {stateLabel(s)}</span>
               {/if}
             {/each}
           </div>
@@ -443,7 +445,7 @@
                 <FolderOpen size={14} />
                 <span class="proj-name" title={p.path}>{p.path.split("/").pop()}</span>
                 <span class="proj-count">{p.count}</span>
-                <button class="mini" onclick={() => reveal(p.path)} title="Reveal in file manager"><FolderOpen size={13} /></button>
+                <button class="mini" onclick={() => reveal(p.path)} title={tt("tools.revealInFinder")}><FolderOpen size={13} /></button>
               </div>
             {/each}
           </div>
@@ -459,10 +461,10 @@
             {#if selGroups.length > 1}
               <button class="ghost sm" onclick={toggleAllGroups}>{allCollapsed ? "Expand all" : "Collapse all"}</button>
             {/if}
-            <div class="filter"><Input bind:value={agentFilter} variant="search" placeholder="Filter…" ariaLabel="Filter agents" /></div>
+            <div class="filter"><Input bind:value={agentFilter} variant="search" placeholder={tt("tools.filterPlaceholder")} ariaLabel={tt("tools.filterAria")} /></div>
           </div>
           {#if selVisible.length === 0}
-            <p class="empty">No agents match “{agentFilter.trim()}”.</p>
+            <p class="empty">No agents match "{agentFilter.trim()}".</p>
           {:else}
             <div class="groups">
               {#each selGroups as g (g.slug)}
@@ -481,20 +483,20 @@
                         {@const isBusy = install.busy === `${r.slug}:${r.tool}`}
                         <li class="agent">
                           <span class="a-emoji" aria-hidden="true">{emoji(r.slug)}</span>
-                          <span class="a-dot" style="background:{STATE_COLOR[r.state]}" title={STATE_LABEL[r.state]}></span>
+                          <span class="a-dot" style="background:{STATE_COLOR[r.state]}" title={stateLabel(r.state)}></span>
                           <span class="a-name">{r.name}</span>
                           {#if r.projectPath}<span class="a-proj" title={r.projectPath}>{r.projectPath.split("/").pop()}</span>{/if}
                           <span class="a-acts">
                             {#if DIFFABLE.includes(r.state)}
-                              <button class="mini" title="See what differs" onclick={() => (diffTarget = r)}><DiffIcon size={13} /></button>
+                              <button class="mini" title={tt("tools.seeDiff")} onclick={() => (diffTarget = r)}><DiffIcon size={13} /></button>
                             {/if}
                             {#if r.state === "foreign"}
-                              <button class="mini" title="Track" disabled={isBusy} onclick={() => quick(() => install.track(r.slug, r.tool, r.projectPath), `Tracking ${r.name}`)}><PlusIcon size={13} /></button>
+                              <button class="mini" title={tt("tools.track")} disabled={isBusy} onclick={() => quick(() => install.track(r.slug, r.tool, r.projectPath), `Tracking ${r.name}`)}><PlusIcon size={13} /></button>
                             {/if}
                             {#if r.state !== "current"}
-                              <button class="mini" title="Update from catalog" disabled={isBusy} onclick={() => quick(() => install.update(r.slug, r.tool, r.projectPath), `Updated ${r.name}`)}><RefreshIcon size={13} /></button>
+                              <button class="mini" title={tt("tools.updateFromCatalog")} disabled={isBusy} onclick={() => quick(() => install.update(r.slug, r.tool, r.projectPath), `Updated ${r.name}`)}><RefreshIcon size={13} /></button>
                             {/if}
-                            <button class="mini danger" title="Remove" disabled={isBusy} onclick={() => quick(() => install.uninstall(r.slug, r.tool, r.projectPath), `Removed ${r.name}`)}><XIcon size={13} /></button>
+                            <button class="mini danger" title={tt("tools.remove")} disabled={isBusy} onclick={() => quick(() => install.uninstall(r.slug, r.tool, r.projectPath), `Removed ${r.name}`)}><XIcon size={13} /></button>
                           </span>
                         </li>
                       {/each}

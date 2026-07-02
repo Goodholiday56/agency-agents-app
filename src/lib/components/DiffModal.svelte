@@ -13,6 +13,7 @@
   import X from "@lucide/svelte/icons/x";
   import { install } from "$lib/stores/install.svelte";
   import { diffLines, diffStat, type DiffRow } from "$lib/util/diff";
+  import { t } from "$lib/stores/i18n.svelte";
   import type { AgentDiff, Tool } from "$lib/types";
 
   interface Props {
@@ -48,8 +49,8 @@
 
 <svelte:window onkeydown={onKey} />
 
-<button class="scrim" aria-label="Close diff" onclick={onClose}></button>
-<div class="box" role="dialog" aria-modal="true" aria-label={`${name} diff`}>
+<button class="scrim" aria-label={t("diff.closeDiff")} onclick={onClose}></button>
+<div class="box" role="dialog" aria-modal="true" aria-label={t("diff.dialogAria", { name })}>
   <header class="head">
     <div class="titles">
       <h2 class="title">{name}</h2>
@@ -58,7 +59,7 @@
     {#if data && !loading}
       <span class="stat"><span class="add">+{stat.added}</span> <span class="rem">−{stat.removed}</span></span>
     {/if}
-    <button class="close" onclick={onClose} aria-label="Close"><X size={16} /></button>
+    <button class="close" onclick={onClose} aria-label={t("common.close")}><X size={16} /></button>
   </header>
 
   {#if data}
@@ -67,17 +68,17 @@
 
   <div class="body">
     {#if loading}
-      <p class="muted">Comparing…</p>
+      <p class="muted">{t("diff.comparing")}</p>
     {:else if error}
       <p class="err">{error}</p>
     {:else if data && data.onDisk === null}
-      <p class="muted">The file is no longer on disk — nothing to compare.</p>
+      <p class="muted">{t("diff.fileMissing")}</p>
     {:else if data && !data.differs}
-      <p class="muted">Identical to the catalog — no differences.</p>
+      <p class="muted">{t("diff.identical")}</p>
     {:else}
       <div class="legend">
-        <span class="rem">− on disk (yours)</span>
-        <span class="add">+ catalog (canonical)</span>
+        <span class="rem">{t("diff.onDisk")}</span>
+        <span class="add">{t("diff.catalog")}</span>
       </div>
       <pre class="diff">{#each rows as r (`${r.oldNo ?? "x"}:${r.newNo ?? "x"}:${r.tag}`)}<span
             class="line {r.tag === '+' ? 'l-add' : r.tag === '-' ? 'l-rem' : 'l-ctx'}"

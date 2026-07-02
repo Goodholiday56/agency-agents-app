@@ -43,6 +43,7 @@
   import { updater } from "$lib/stores/updater.svelte";
   import { settings } from "$lib/stores/settings.svelte";
   import { ui } from "$lib/stores/ui.svelte";
+  import { t } from "$lib/stores/i18n.svelte";
 
   /** Local snapshot to keep handlers tidy. Reactive — re-evaluates when
       the store's `available` changes. */
@@ -82,15 +83,15 @@
     tabindex="0"
     onclick={onPillClick}
     onkeydown={onPillKeydown}
-    aria-label={`Update available: Agency Agents ${info.version}. Click to open Settings.`}
-    title={`Agency Agents ${info.version} is available`}
+    aria-label={t("updates.available", { version: info.version })}
+    title={t("updates.versionAvailable", { version: info.version })}
   >
     <span class="text" aria-hidden="true">
       <ArrowUp size={12} />
-      <span>Update available</span>
+      <span>{t("updates.versionAvailable", { version: info.version })}</span>
     </span>
     {#if updater.installing}
-      <span class="spinner" aria-label="Installing update" title="Installing…">
+      <span class="spinner" aria-label={t("updates.installing", { version: info.version })} title={t("updates.installing", { version: info.version })}>
         <Loader size={12} />
       </span>
     {:else}
@@ -98,8 +99,8 @@
         type="button"
         class="dismiss"
         onclick={onSkipClick}
-        aria-label={`Dismiss update notification for v${info.version}`}
-        title="Skip this version"
+        aria-label={t("common.dismiss")}
+        title={t("updates.available", { version: info.version })}
       >
         <X size={12} />
       </button>

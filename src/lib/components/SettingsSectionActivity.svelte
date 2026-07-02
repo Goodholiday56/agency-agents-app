@@ -18,6 +18,7 @@
     ACTIVITY_MAX_LINES_MAX,
     ACTIVITY_MAX_LINES_DEFAULT,
   } from "$lib/stores/ui.svelte";
+  import { t } from "$lib/stores/i18n.svelte";
 
   function onJobsChange(e: Event) {
     const v = Number((e.currentTarget as HTMLInputElement).value);
@@ -30,10 +31,10 @@
 </script>
 
 <div class="section">
-  <h2>Activity</h2>
+  <h2>{t("activity.title")}</h2>
 
   <div class="field">
-    <label for="max-jobs">Keep last N completed jobs</label>
+    <label for="max-jobs">{t("activity.maxJobs")}</label>
     <input
       id="max-jobs"
       type="number"
@@ -45,13 +46,12 @@
       onchange={onJobsChange}
     />
     <p class="hint">
-      Range {ACTIVITY_MAX_JOBS_MIN}–{ACTIVITY_MAX_JOBS_MAX}. Default
-      {ACTIVITY_MAX_JOBS_DEFAULT}.
+      {t("activity.maxJobsHint", { min: ACTIVITY_MAX_JOBS_MIN, max: ACTIVITY_MAX_JOBS_MAX, default: ACTIVITY_MAX_JOBS_DEFAULT })}
     </p>
   </div>
 
   <div class="field">
-    <label for="max-lines">Lines per job</label>
+    <label for="max-lines">{t("activity.maxLines")}</label>
     <input
       id="max-lines"
       type="number"
@@ -63,15 +63,11 @@
       onchange={onLinesChange}
     />
     <p class="hint">
-      Range {ACTIVITY_MAX_LINES_MIN}–{ACTIVITY_MAX_LINES_MAX}. Default
-      {ACTIVITY_MAX_LINES_DEFAULT}.
+      {t("activity.maxLinesHint", { min: ACTIVITY_MAX_LINES_MIN, max: ACTIVITY_MAX_LINES_MAX, default: ACTIVITY_MAX_LINES_DEFAULT })}
     </p>
   </div>
 
-  <p class="note">
-    These limits apply to future job persistence. Existing retained data is
-    not trimmed retroactively.
-  </p>
+  <p class="note">{t("activity.note")}</p>
 </div>
 
 <style>

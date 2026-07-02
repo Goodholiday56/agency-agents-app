@@ -11,6 +11,7 @@
   import EmptyState from "./EmptyState.svelte";
   import { activity, type JournalEntry } from "$lib/stores/activity.svelte";
   import { install } from "$lib/stores/install.svelte";
+  import { t } from "$lib/stores/i18n.svelte";
 
   /** Lucide icon per journal action. */
   const ACTION_ICON = {
@@ -24,15 +25,17 @@
   } as const;
 
   /** Sentence-case verb shown at the head of each row. */
-  const ACTION_VERB: Record<JournalEntry["action"], string> = {
-    install: "Installed",
-    uninstall: "Removed",
-    update: "Updated",
-    track: "Tracked",
-    switch: "Switched",
-    sync: "Synced",
-    bulk: "Bulk",
-  };
+  function actionVerb(action: JournalEntry["action"]): string {
+    switch (action) {
+      case "install": return t("activityHistory.installed");
+      case "uninstall": return t("activityHistory.removed");
+      case "update": return t("activityHistory.updated");
+      case "track": return t("activityHistory.tracked");
+      case "switch": return t("activityHistory.switched");
+      case "sync": return t("activityHistory.synced");
+      case "bulk": return t("activityHistory.bulk");
+    }
+  }
 
   /** Basename of a project path, for the " · project" suffix. */
   function basename(p: string): string {
@@ -46,14 +49,14 @@
     const tool = e.tool ? install.toolLabel(e.tool) : "";
     // Default-target toggle: the tool IS the subject, detail is the descriptor.
     if (e.action === "switch") {
-      return tool ? `${tool} · ${e.detail ?? "default target changed"}` : (e.detail ?? "Default target changed");
+      return tool ? `${tool} · ${e.detail ?? t("activityHistory.defaultTargetChanged")}` : (e.detail ?? t("activityHistory.defaultTargetChangedAlt"));
     }
     // Batch sweeps: detail is already a self-contained phrase ("Updated 3 agents").
     if (e.action === "sync" || e.action === "bulk") {
-      return e.detail ?? ACTION_VERB[e.action];
+      return e.detail ?? actionVerb(e.action);
     }
     // Single-agent ops: "Verb agent → Tool · project".
-    let s = `${ACTION_VERB[e.action]} ${e.agentName ?? e.agentSlug ?? ""}`.trim();
+    let s = `${actionVerb(e.action)} ${e.agentName ?? e.agentSlug ?? ""}`.trim();
     if (tool) s += ` → ${tool}`;
     if (e.scope === "project" && e.projectPath) s += ` · ${basename(e.projectPath)}`;
     return s;
@@ -70,8 +73,8 @@
       const n = new Date();
       return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
     })();
-    if (key === today) return "Today";
-    if (key === today - DAY_MS) return "Yesterday";
+    if (key === today) return t("activityHistory.today");
+    if (key === today - DAY_MS) return t("activityHistory.yesterday");
     return new Date(key).toLocaleDateString(undefined, {
       weekday: "short",
       month: "short",
@@ -98,7 +101,7 @@
   function relTime(iso: string): string {
     const diff = Date.now() - new Date(iso).getTime();
     const sec = Math.floor(diff / 1000);
-    if (sec < 45) return "just now";
+    if (sec < 45) return t("activityHistory.justNow");
     const min = Math.floor(sec / 60);
     if (min < 60) return `${min}m`;
     const hr = Math.floor(min / 60);
@@ -113,7 +116,7 @@
       <span class="action-wrap" data-tauri-drag-region="false">
         <Button size="sm" variant="ghost" onclick={() => activity.clear()}>
           {#snippet icon()}<Trash2 size={14} />{/snippet}
-          Clear
+          {t("activityHistory.clear")}
         </Button>
       </span>
     </header>
@@ -122,8 +125,8 @@
   <div class="list-wrap">
     {#if activity.entries.length === 0}
       <EmptyState
-        title="No activity yet"
-        body="Installs, updates, and removes will show up here."
+        title={t("activityHistory.noActivity")}
+        body={t("activityHistory.noActivityBody")}
       >
         {#snippet icon()}<ActivityIcon size={48} />{/snippet}
       </EmptyState>
@@ -143,8 +146,8 @@
                 class="status-dot"
                 class:ok={e.outcome === "ok"}
                 class:fail={e.outcome === "error"}
-                aria-label={e.outcome === "error" ? "Failed" : "Succeeded"}
-                title={e.outcome === "error" ? (e.detail ?? "Failed") : "Succeeded"}
+                aria-label={e.outcome === "error" ? t("activityHistory.failed") : t("activityHistory.succeeded")}
+                title={e.outcome === "error" ? (e.detail ?? t("activityHistory.failed")) : t("activityHistory.succeeded")}
               ></span>
             </li>
           {/each}

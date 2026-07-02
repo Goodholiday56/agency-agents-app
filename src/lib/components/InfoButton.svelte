@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
   import Info from "@lucide/svelte/icons/info";
+  import { t } from "$lib/stores/i18n.svelte";
 
   /**
    * Small inline (i) icon button that opens a popover with provenance
@@ -30,7 +31,7 @@
     onReport?: () => void | Promise<void>;
   }
 
-  let { title, body, label = "About this field", onReport }: Props = $props();
+  let { title, body, label = t("common.aboutField"), onReport }: Props = $props();
 
   let open = $state(false);
   let triggerEl: HTMLButtonElement | undefined = $state();
@@ -179,7 +180,7 @@
     <p class="popover-body">{body}</p>
     {#if onReport}
       <button type="button" class="report" onclick={fireReport}>
-        Report an issue on GitHub
+        {t("common.reportIssue")}
       </button>
     {/if}
   </div>

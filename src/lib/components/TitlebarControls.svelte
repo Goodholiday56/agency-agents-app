@@ -14,6 +14,7 @@
   import { safeOpenUrl } from "$lib/util/url";
   import { SPONSOR_URL } from "$lib/util/donate";
   import { shortcut } from "$lib/util/platform";
+  import { t } from "$lib/stores/i18n.svelte";
   import type { ThemePreference } from "$lib/types";
 
   /**
@@ -30,8 +31,8 @@
   function activeIcon(t: ThemePreference) {
     return t === "light" ? Sun : t === "dark" ? Moon : Monitor;
   }
-  function activeLabel(t: ThemePreference) {
-    return t === "light" ? "Light" : t === "dark" ? "Dark" : "System";
+  function activeLabel(tp: ThemePreference) {
+    return tp === "light" ? t("common.light") : tp === "dark" ? t("common.dark") : t("common.system");
   }
 
   let ActiveIcon = $derived(activeIcon(ui.theme));
@@ -106,7 +107,7 @@
   });
 </script>
 
-<div class="cluster" data-tauri-drag-region="false" role="group" aria-label="App controls">
+<div class="cluster" data-tauri-drag-region="false" role="group" aria-label={t("titlebar.appControls")}>
   {#if githubChipState !== "hidden"}
     <button
       type="button"
@@ -115,9 +116,9 @@
       class:warn={githubChipState === "scope-incomplete"}
       onclick={openGithubSettings}
       title={githubChipState === "ok"
-        ? `GitHub: connected as @${github.status?.username ?? "user"}`
-        : "GitHub: signed in, but scope incomplete — click to fix"}
-      aria-label="GitHub connection status"
+        ? t("titlebar.githubConnected", { username: github.status?.username ?? "user" })
+        : t("titlebar.githubScopeIncomplete")}
+      aria-label={t("titlebar.githubStatus")}
     >
       <GithubMarkIcon size={14} />
     </button>
@@ -128,8 +129,8 @@
     class="ctrl"
     class:open={themeOpen}
     onclick={() => (themeOpen = !themeOpen)}
-    title={`Theme: ${activeLabel(ui.theme)}`}
-    aria-label="Change theme"
+    title={t("titlebar.theme", { name: activeLabel(ui.theme) })}
+    aria-label={t("titlebar.changeTheme")}
     aria-haspopup="menu"
     aria-expanded={themeOpen}
   >
@@ -139,8 +140,8 @@
     type="button"
     class="ctrl"
     onclick={() => ui.openPlaybook()}
-    title="The Playbook — how to use your agents"
-    aria-label="Open the Playbook"
+    title={t("titlebar.playbookTitle")}
+    aria-label={t("titlebar.openPlaybook")}
   >
     <BookOpenIcon size={14} />
   </button>
@@ -148,8 +149,8 @@
     type="button"
     class="ctrl"
     onclick={() => ui.openSettings()}
-    title={`Settings (${shortcut(",")})`}
-    aria-label="Open Settings"
+    title={t("titlebar.settings", { shortcut: shortcut(",") })}
+    aria-label={t("titlebar.openSettings")}
   >
     <SettingsIcon size={14} />
   </button>
@@ -157,8 +158,8 @@
     type="button"
     class="ctrl donate"
     onclick={openSponsor}
-    title="Donate via GitHub Sponsors"
-    aria-label="Support Agency Agents on GitHub Sponsors"
+    title={t("titlebar.donateTitle")}
+    aria-label={t("titlebar.donateAria")}
   >
     <Heart size={14} fill="currentColor" />
   </button>
@@ -168,7 +169,7 @@
       bind:this={themePopover}
       class="popover"
       role="menu"
-      aria-label="Theme"
+      aria-label={t("titlebar.themeMenu")}
     >
       <button
         type="button"
@@ -179,7 +180,7 @@
         onclick={() => pickTheme("light")}
       >
         <Sun size={14} />
-        <span>Light</span>
+        <span>{t("common.light")}</span>
         {#if ui.theme === "light"}<Check size={12} class="check" />{/if}
       </button>
       <button
@@ -191,7 +192,7 @@
         onclick={() => pickTheme("dark")}
       >
         <Moon size={14} />
-        <span>Dark</span>
+        <span>{t("common.dark")}</span>
         {#if ui.theme === "dark"}<Check size={12} class="check" />{/if}
       </button>
       <button
@@ -203,7 +204,7 @@
         onclick={() => pickTheme("system")}
       >
         <Monitor size={14} />
-        <span>System</span>
+        <span>{t("common.system")}</span>
         {#if ui.theme === "system"}<Check size={12} class="check" />{/if}
       </button>
     </div>

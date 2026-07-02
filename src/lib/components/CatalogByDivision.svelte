@@ -19,6 +19,7 @@
    * stays 1px under the non-uniform scale. The SVG's y-space is in px and the
    * element is exactly H px tall, so y maps 1:1 while x maps percent → width.
    */
+  import { t } from "$lib/stores/i18n.svelte";
   import { corpus } from "$lib/stores/corpus.svelte";
   import { ui } from "$lib/stores/ui.svelte";
 
@@ -94,11 +95,11 @@
 </script>
 
 {#if model.total === 0}
-  <p class="cbd-empty">No agents in the catalog yet.</p>
+  <p class="cbd-empty">{t("catalog.noAgentsYet")}</p>
 {:else}
   <div class="cbd">
     <div class="cbd-head">
-      <span class="cbd-total">{model.total} agents</span>
+      <span class="cbd-total">{model.total} {t("common.agents")}</span>
       <span class="cbd-pct">100%</span>
     </div>
 
@@ -128,8 +129,8 @@
           <button
             class="cbd-seg" class:dim={dim(s.slug)}
             style="width:{s.pct}%; background:{s.color}"
-            title={`${s.label}: ${s.count} agents (${s.pct.toFixed(1)}%)`}
-            aria-label={`${s.label}: ${s.count} agents`}
+            title={`${s.label}: ${s.count} ${t("common.agents")} (${s.pct.toFixed(1)}%)`}
+            aria-label={`${s.label}: ${s.count} ${t("common.agents")}`}
             onmouseenter={() => (hovered = s.slug)}
             onmouseleave={() => (hovered = null)}
             onclick={() => ui.openDivision(s.slug)}
@@ -159,7 +160,7 @@
           onmouseenter={() => (hovered = f.slug)}
           onmouseleave={() => (hovered = null)}
           onclick={() => ui.openDivision(f.slug)}
-          title={`${f.label}: ${f.count} agents`}
+          title={`${f.label}: ${f.count} ${t("common.agents")}`}
         >
           <span class="cbd-swatch" style="background:{f.color}"></span>
           <span class="cbd-name truncate">{f.label}</span>

@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import Modal from "./Modal.svelte";
   import Button from "./Button.svelte";
+  import { t } from "$lib/stores/i18n.svelte";
 
   interface Props {
     open: boolean;
@@ -19,8 +20,8 @@
   let {
     open,
     title,
-    confirmLabel = "Confirm",
-    cancelLabel = "Cancel",
+    confirmLabel = t("confirm.confirm"),
+    cancelLabel = t("confirm.cancel"),
     confirmVariant = "danger",
     confirmDisabled = false,
     onConfirm,

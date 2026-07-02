@@ -10,6 +10,7 @@
   import { safeOpenUrl } from "$lib/util/url";
   import { SPONSOR_URL } from "$lib/util/donate";
   import appIcon from "$lib/assets/app-icon.png";
+  import { t } from "$lib/stores/i18n.svelte";
 
   const REPO_URL = "https://github.com/msitarzewski/agency-agents-app";
   const LICENSE_URL = "https://github.com/msitarzewski/agency-agents-app/blob/main/LICENSE";
@@ -60,46 +61,40 @@
       aria-labelledby="about-title"
       data-tauri-drag-region="false"
     >
-      <button class="close" aria-label="Close About" onclick={() => ui.closeAbout()}>
+      <button class="close" aria-label={t("aboutModal.closeAbout")} onclick={() => ui.closeAbout()}>
         <X size={16} />
       </button>
 
       <div class="hero">
-        <img class="brand-mark" src={appIcon} alt="Agency Agents" width="80" height="80" />
-        <h1 id="about-title">Agency Agents</h1>
-        <p class="tagline">A native macOS app store for AI agents.</p>
+        <img class="brand-mark" src={appIcon} alt={t("aboutModal.title")} width="80" height="80" />
+        <h1 id="about-title">{t("aboutModal.title")}</h1>
+        <p class="tagline">{t("aboutModal.tagline")}</p>
       </div>
 
       <dl class="meta">
-        <div><dt>Version</dt><dd class="mono">{appVer ?? "…"}</dd></div>
-        <div><dt>License</dt><dd><button class="link" onclick={openLicense}>MIT</button></dd></div>
-        <div><dt>Repo</dt><dd><button class="link" onclick={openRepo}>github.com/msitarzewski/agency-agents-app</button></dd></div>
+        <div><dt>{t("aboutModal.version")}</dt><dd class="mono">{appVer ?? "…"}</dd></div>
+        <div><dt>{t("aboutModal.license")}</dt><dd><button class="link" onclick={openLicense}>MIT</button></dd></div>
+        <div><dt>{t("aboutModal.repo")}</dt><dd><button class="link" onclick={openRepo}>github.com/msitarzewski/agency-agents-app</button></dd></div>
       </dl>
 
-      <button class="donate-cta" onclick={openSponsor} title="Open GitHub Sponsors in your browser">
+      <button class="donate-cta" onclick={openSponsor} title={t("aboutModal.openSponsor")}>
         <Heart size={16} />
-        <span>Donate to the project</span>
+        <span>{t("aboutModal.donate")}</span>
         <ExternalLink size={12} />
       </button>
 
       <section class="credits">
-        <h2><Sparkles size={14} /> Built with</h2>
+        <h2><Sparkles size={14} /> {t("aboutModal.builtWith")}</h2>
         <p>
-          The <button class="link" onclick={openAgencyAgents}><strong>agency-agents</strong></button>
-          catalog (Backend Architect, Frontend Developer, Security Engineer,
-          Code Reviewer, Technical Writer, and 200+ friends) — and this very app
-          was built by those agents, powered by <strong>Claude Code</strong> in
-          the terminal, running <strong>Opus 4.8 [1m]</strong>.
+          {t("aboutModal.credits")}
         </p>
         <p class="thanks">
-          Thanks to every agent author in the catalog, and to Tauri for the
-          native shell.
+          {t("aboutModal.thanks")}
         </p>
       </section>
 
       <p class="posture text-muted">
-        Zero telemetry. Zero accounts. Every outbound network call is
-        documented in Settings → Network.
+        {t("aboutModal.zeroTelemetry")}
       </p>
     </div>
   </div>

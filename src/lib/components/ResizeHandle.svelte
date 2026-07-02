@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from "$lib/stores/i18n.svelte";
+
   /**
    * ResizeHandle — vertical drag handle for resizing a sibling pane horizontally.
    *
@@ -48,7 +50,7 @@
     direction = "left",
     onChange,
     onCommit,
-    label = "Resize panel",
+    label = t("common.resizePanel"),
   }: Props = $props();
 
   // Drag state — `dragging` is reactive (`class:dragging` styles the hairline);
@@ -142,7 +144,7 @@
   onpointercancel={endDrag}
   onkeydown={onKeyDown}
   ondblclick={onDblClick}
-  title="Drag to resize · double-click to reset"
+  title={t("common.dragToResize")}
 ></div>
 
 <style>

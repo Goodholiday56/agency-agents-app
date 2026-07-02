@@ -8,6 +8,8 @@
    * no-library technique); the group is rotated -90° so the first segment starts
    * at twelve o'clock. A zero-total donut renders just the track ring.
    */
+  import { t } from "$lib/stores/i18n.svelte";
+
   type Segment = { label: string; value: number; color: string; onClick?: () => void };
 
   let {

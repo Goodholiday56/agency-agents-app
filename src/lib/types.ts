@@ -550,6 +550,7 @@ export type ThemePreference = "light" | "dark" | "system";
     `ui.openSettings(section)`. */
 export type SettingsSection =
   | "appearance"
+  | "language"
   | "catalog"
   | "network"
   | "github"

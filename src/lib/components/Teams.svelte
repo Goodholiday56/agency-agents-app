@@ -33,6 +33,7 @@
   import { install } from "$lib/stores/install.svelte";
   import { corpus } from "$lib/stores/corpus.svelte";
   import { teams, type SavedTeam } from "$lib/stores/teams.svelte";
+  import { t } from "$lib/stores/i18n.svelte";
   import { toast } from "$lib/stores/toast.svelte";
   import { ui } from "$lib/stores/ui.svelte";
   import { resolveCategoryIcon } from "$lib/util/categoryIcon";
@@ -68,7 +69,7 @@
     }
     const out = [...m.entries()].map(([slug, rows]) => ({
       slug,
-      label: slug === OTHER ? "Other" : corpus.labelOf(slug),
+      label: slug === OTHER ? t("teams.other") : corpus.labelOf(slug),
       color: slug === OTHER ? "#94A3B8" : corpus.colorOf(slug),
       icon: slug === OTHER ? "HelpCircle" : corpus.iconOf(slug),
       rows: rows.slice().sort((a, b) => a.name.localeCompare(b.name)),
@@ -128,8 +129,8 @@
     }
     if (key.startsWith("saved:")) {
       const id = key.slice("saved:".length);
-      const t = teams.saved.find((x) => x.id === id);
-      return t ? { key, label: t.name, description: `${t.agents.length} agent${t.agents.length === 1 ? "" : "s"} · saved team`, color: null, icon: UsersIcon as unknown as Component, saved: true, agents: t.agents, examples: [] } : null;
+      const saved = teams.saved.find((x) => x.id === id);
+      return saved ? { key, label: saved.name, description: `${t("tools.agentsCount", { n: saved.agents.length })} · ${t("teams.savedTeam")}`, color: null, icon: UsersIcon as unknown as Component, saved: true, agents: saved.agents, examples: [] } : null;
     }
     return null;
   });
@@ -148,7 +149,7 @@
     }
     const out = [...m.entries()].map(([slug, rows]) => ({
       slug,
-      label: slug === TOTHER ? "Other" : corpus.labelOf(slug),
+      label: slug === TOTHER ? t("teams.other") : corpus.labelOf(slug),
       color: slug === TOTHER ? "#94A3B8" : corpus.colorOf(slug),
       icon: slug === TOTHER ? "HelpCircle" : corpus.iconOf(slug),
       rows: rows.slice().sort((a, b) => a.name.localeCompare(b.name)),
@@ -202,40 +203,40 @@
   }
   function confirmSave() {
     if (managedSlugs.length === 0) return;
-    const t = teams.save(saveName, managedSlugs);
+    const saved = teams.save(saveName, managedSlugs);
     saveOpen = false;
     tab = "presets";
-    toast.success(`Saved “${t.name}”`, `${t.agents.length} agent${t.agents.length === 1 ? "" : "s"}`);
+    toast.success(t("teams.savedToast", { name: saved.name }), t("teams.savedToastBody", { n: saved.agents.length }));
   }
 
-  function deleteSaved(t: SavedTeam) {
-    teams.remove(t.id);
-    toast.success(`Deleted “${t.name}”`);
+  function deleteSaved(team: SavedTeam) {
+    teams.remove(team.id);
+    toast.success(t("teams.deletedToast", { name: team.name }));
   }
 
   // ── Agentfile export / restore (your current team) ──
   async function exportLoadout() {
-    const path = await saveDialog({ title: "Save Agentfile", defaultPath: "Agentfile.json", filters: [{ name: "Agentfile", extensions: ["json"] }] });
+    const path = await saveDialog({ title: t("teams.saveAgentfile"), defaultPath: "Agentfile.json", filters: [{ name: "Agentfile", extensions: ["json"] }] });
     if (!path) return;
     busy = true;
     try {
       const n = await install.exportLoadout(path);
-      toast.success(`Exported ${n} agent${n === 1 ? "" : "s"}`, path);
+      toast.success(t("teams.exportedToast", { n }), path);
     } catch (e) {
-      toast.error("Export failed", String(e));
+      toast.error(t("teams.exportFailed"), String(e));
     } finally {
       busy = false;
     }
   }
   async function importLoadout() {
-    const picked = await openDialog({ title: "Restore from Agentfile", multiple: false, filters: [{ name: "Agentfile", extensions: ["json"] }] });
+    const picked = await openDialog({ title: t("teams.restoreAgentfile"), multiple: false, filters: [{ name: "Agentfile", extensions: ["json"] }] });
     if (!picked || Array.isArray(picked)) return;
     busy = true;
     try {
       const recs = await install.importLoadout(picked);
-      toast.success(`Restored ${recs.length} agent${recs.length === 1 ? "" : "s"}`, picked);
+      toast.success(t("teams.restoredToast", { n: recs.length }), picked);
     } catch (e) {
-      toast.error("Restore failed", String(e));
+      toast.error(t("teams.restoreFailed"), String(e));
     } finally {
       busy = false;
     }
@@ -244,46 +245,49 @@
 
 <section class="lo">
   <header class="lo-head">
-    <div class="seg" role="tablist" aria-label="Teams view">
+    <div class="seg" role="tablist" aria-label={t("teams.teamsView")}>
       <button class="seg-btn" class:on={tab === "current"} role="tab" aria-selected={tab === "current"} onclick={() => (tab = "current")}>
-        <UsersIcon size={14} /> Your team
+        <UsersIcon size={14} /> {t("teams.yourTeam")}
       </button>
       <button class="seg-btn" class:on={tab === "presets"} role="tab" aria-selected={tab === "presets"} onclick={() => (tab = "presets")}>
-        <RocketIcon size={14} /> Team presets
+        <RocketIcon size={14} /> {t("teams.teamPresets")}
       </button>
     </div>
 
     {#if tab === "current"}
       <div class="lo-actions">
         {#if managed.length > 0}
-          <button class="btn ghost" onclick={toggleAll}>{allCollapsed ? "Expand all" : "Collapse all"}</button>
-          <button class="btn" onclick={openSave}><SaveIcon size={15} /><span>Save as team…</span></button>
+          <button class="btn ghost" onclick={toggleAll}>{allCollapsed ? t("teams.expandAll") : t("teams.collapseAll")}</button>
+          <button class="btn" onclick={openSave}><SaveIcon size={15} /><span>{t("teams.saveAsTeam")}</span></button>
         {/if}
-        <button class="btn" disabled={busy} onclick={importLoadout}><DownloadIcon size={15} /><span>Restore…</span></button>
-        <button class="btn primary" disabled={busy || managed.length === 0} onclick={exportLoadout}><UploadIcon size={15} /><span>Export…</span></button>
+        <button class="btn" disabled={busy} onclick={importLoadout}><DownloadIcon size={15} /><span>{t("teams.restore")}</span></button>
+        <button class="btn primary" disabled={busy || managed.length === 0} onclick={exportLoadout}><UploadIcon size={15} /><span>{t("teams.export")}</span></button>
       </div>
     {/if}
   </header>
 
   {#if tab === "current"}
     {#if managed.length === 0}
-      <EmptyState title="No team yet">
+      <EmptyState title={t("teams.noTeamYet")}>
         {#snippet icon()}<ArchiveIcon size={48} />{/snippet}
-        Install some agents — or deploy a <strong>preset</strong> — then save your setup as a team
-        and <strong>Export</strong> it to move to a new Mac in one click.
+        {t("teams.noTeamBody")}
         {#snippet cta()}
           <div class="empty-cta">
             <Button variant="primary" onclick={() => (tab = "presets")}>
               {#snippet icon()}<RocketIcon size={15} />{/snippet}
-              Browse team presets
+              {t("teams.browsePresets")}
             </Button>
-            <button class="link-btn" onclick={() => ui.openPlaybook()}>New to agents? Open the Playbook →</button>
+            <button class="link-btn" onclick={() => ui.openPlaybook()}>{t("teams.newToAgents")}</button>
           </div>
         {/snippet}
       </EmptyState>
     {:else}
       <p class="lo-sub">
-        {managed.length} agent{managed.length === 1 ? "" : "s"}{#if groups.length > 1} · {groups.length} divisions{/if}
+        {#if groups.length > 1}
+          {t("teams.agentsDivisions", { n: managed.length, d: groups.length })}
+        {:else}
+          {t("tools.agentsCount", { n: managed.length })}
+        {/if}
       </p>
       <div class="groups">
         {#each groups as g (g.slug)}
@@ -322,18 +326,24 @@
           <h2 class="td-name">{team.label}</h2>
           <p class="td-desc">{team.description}</p>
         </div>
-        <span class="td-count">{st.count} agent{st.count === 1 ? "" : "s"}{#if st.deployed > 0} · {st.deployed} deployed{/if}</span>
-        <Button variant="primary" onclick={() => deploy(`Deploy ${team.label}`, team.agents)}>Deploy…</Button>
+        <span class="td-count">{t("tools.agentsCount", { n: st.count })}{#if st.deployed > 0} · {t("teams.deployed", { n: st.deployed })}{/if}</span>
+        <Button variant="primary" onclick={() => deploy(`Deploy ${team.label}`, team.agents)}>{t("teams.deploy")}</Button>
       </div>
 
-      <h3 class="td-sec">Try these</h3>
+      <h3 class="td-sec">{t("teams.tryThese")}</h3>
       <div class="td-examples">
         {#each detailExamples as ex (ex)}
           <StarterPrompt template={ex} />
         {/each}
       </div>
 
-      <h3 class="td-sec">{st.count} agent{st.count === 1 ? "" : "s"}{#if detailGroups.length > 1} · {detailGroups.length} divisions{/if}</h3>
+      <h3 class="td-sec">
+        {#if detailGroups.length > 1}
+          {t("teams.agentsDivisions", { n: st.count, d: detailGroups.length })}
+        {:else}
+          {t("tools.agentsCount", { n: st.count })}
+        {/if}
+      </h3>
       <div class="groups">
         {#each detailGroups as g (g.slug)}
           {@const Icon = resolveCategoryIcon(g.icon)}
@@ -355,33 +365,33 @@
           </section>
         {/each}
         {#if detailMissing > 0}
-          <p class="td-missing">{detailMissing} agent{detailMissing === 1 ? "" : "s"} in this team aren't in your catalog yet — they'll be skipped on deploy.</p>
+          <p class="td-missing">{t("teams.missingAgents", { n: detailMissing })}</p>
         {/if}
       </div>
     </div>
   {:else}
     <div class="cards">
       {#if teams.saved.length > 0}
-        <h2 class="cards-h">Your saved teams</h2>
+        <h2 class="cards-h">{t("teams.yourSavedTeams")}</h2>
         <ul class="card-list">
-          {#each teams.saved as t (t.id)}
-            {@const st = teamStats(t.agents)}
+          {#each teams.saved as team (team.id)}
+            {@const st = teamStats(team.agents)}
             <li class="card">
-              <button class="card-main" onclick={() => openSaved(t)}>
+              <button class="card-main" onclick={() => openSaved(team)}>
                 <span class="card-ic saved"><UsersIcon size={18} /></span>
                 <span class="card-body">
-                  <span class="card-title">{t.name}</span>
-                  <span class="card-desc">{st.count} agent{st.count === 1 ? "" : "s"}{#if st.deployed > 0} · {st.deployed} deployed{/if}</span>
+                  <span class="card-title">{team.name}</span>
+                  <span class="card-desc">{t("tools.agentsCount", { n: st.count })}{#if st.deployed > 0} · {t("teams.deployed", { n: st.deployed })}{/if}</span>
                 </span>
                 <ChevronRight size={16} class="card-go" />
               </button>
-              <button class="card-del" title="Delete team" aria-label={`Delete ${t.name}`} onclick={() => deleteSaved(t)}><Trash2 size={14} /></button>
+              <button class="card-del" title={t("teams.deleteTeam")} aria-label={t("teams.deleteAria", { name: team.name })} onclick={() => deleteSaved(team)}><Trash2 size={14} /></button>
             </li>
           {/each}
         </ul>
       {/if}
 
-      <h2 class="cards-h">Presets</h2>
+      <h2 class="cards-h">{t("teams.presets")}</h2>
       <ul class="card-list">
         {#each PRESET_TEAMS as p (p.slug)}
           {@const st = teamStats(p.agents)}
@@ -392,7 +402,7 @@
               <span class="card-body">
                 <span class="card-title">{p.label}</span>
                 <span class="card-desc">{p.description}</span>
-                <span class="card-meta">{st.count} agent{st.count === 1 ? "" : "s"}{#if st.deployed > 0} · {st.deployed} deployed{/if}</span>
+                <span class="card-meta">{t("tools.agentsCount", { n: st.count })}{#if st.deployed > 0} · {t("teams.deployed", { n: st.deployed })}{/if}</span>
               </span>
               <ChevronRight size={16} class="card-go" />
             </button>
@@ -408,12 +418,12 @@
 {/if}
 
 {#if saveOpen}
-  <Modal open title="Save as team" defaultFocus="first" onClose={() => (saveOpen = false)}>
-    <p class="save-sub">Snapshots your {managedSlugs.length} installed agent{managedSlugs.length === 1 ? "" : "s"} as a reusable team.</p>
-    <Input bind:value={saveName} placeholder="Team name (e.g. “My SaaS stack”)" ariaLabel="Team name" />
+  <Modal open title={t("teams.saveModalTitle")} defaultFocus="first" onClose={() => (saveOpen = false)}>
+    <p class="save-sub">{t("teams.saveModalBody", { n: managedSlugs.length })}</p>
+    <Input bind:value={saveName} placeholder={t("teams.teamNamePlaceholder")} ariaLabel={t("teams.teamNameAria")} />
     {#snippet actions()}
-      <Button variant="secondary" modalAction="cancel" onclick={() => (saveOpen = false)}>Cancel</Button>
-      <Button variant="primary" modalAction="confirm" disabled={managedSlugs.length === 0} onclick={confirmSave}>Save team</Button>
+      <Button variant="secondary" modalAction="cancel" onclick={() => (saveOpen = false)}>{t("teams.cancel")}</Button>
+      <Button variant="primary" modalAction="confirm" disabled={managedSlugs.length === 0} onclick={confirmSave}>{t("teams.saveTeam")}</Button>
     {/snippet}
   </Modal>
 {/if}

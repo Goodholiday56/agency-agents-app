@@ -35,6 +35,7 @@
   import { github } from "$lib/stores/github.svelte";
   import { safeOpenUrl } from "$lib/util/url";
   import { toast } from "$lib/stores/toast.svelte";
+  import { t } from "$lib/stores/i18n.svelte";
   // NOTE: `toast` is still used inside copyCode()'s clipboard handlers
   // (Code copied to clipboard / Couldn't copy code). Those are
   // event-handler-driven imperative toasts — the correct Svelte 5
@@ -91,8 +92,8 @@
     if (github.signinState.kind !== "waiting") return;
     const code = github.signinState.userCode;
     void navigator.clipboard.writeText(code).then(
-      () => toast.success("Code copied to clipboard"),
-      () => toast.error("Couldn't copy code"),
+      () => toast.success(t("deviceflow.copied")),
+      () => toast.error(t("deviceflow.copyFailed")),
     );
   }
 
@@ -122,11 +123,11 @@
 
 {#if isOpen}
   <div class="scrim" role="presentation" onclick={onCancel}></div>
-  <div class="wrap" role="dialog" aria-modal="true" aria-label="Sign in to GitHub">
+  <div class="wrap" role="dialog" aria-modal="true" aria-label={t("deviceflow.signIn")}>
     <div class="modal">
       <header>
-        <h2>Sign in to GitHub</h2>
-        <button class="close" aria-label="Cancel sign in" onclick={onCancel}>
+        <h2>{t("deviceflow.signIn")}</h2>
+        <button class="close" aria-label={t("deviceflow.cancelSignIn")} onclick={onCancel}>
           <X size={16} />
         </button>
       </header>
@@ -135,49 +136,49 @@
         {#if github.signinState.kind === "starting"}
           <div class="status">
             <Loader size={18} class="spin" />
-            <span>Contacting GitHub…</span>
+            <span>{t("deviceflow.contacting")}</span>
           </div>
         {:else if github.signinState.kind === "waiting"}
           <ol class="steps">
             <li>
-              Open
+              {t("deviceflow.open")}
               <button class="link" type="button" onclick={openVerification}>
                 {github.signinState.verificationUri}
                 <ExternalLink size={12} />
               </button>
-              in your browser.
+              {t("deviceflow.inBrowser")}
             </li>
-            <li>Enter this code:</li>
+            <li>{t("deviceflow.enterCode")}</li>
           </ol>
-          <button class="code" type="button" onclick={copyCode} title="Click to copy">
+          <button class="code" type="button" onclick={copyCode} title={t("deviceflow.clickToCopy")}>
             {github.signinState.userCode}
           </button>
-          <p class="hint">Click the code to copy it.</p>
+          <p class="hint">{t("deviceflow.clickHint")}</p>
 
           <div class="status">
             <Loader size={16} class="spin" />
-            <span>Waiting for authorization…</span>
+            <span>{t("deviceflow.waiting")}</span>
           </div>
 
           {#if remainingSeconds !== null}
             <p class="expires">
-              Code expires in {Math.floor(remainingSeconds / 60)}m {remainingSeconds % 60}s.
+              {t("deviceflow.expiresIn", { m: Math.floor(remainingSeconds / 60), s: remainingSeconds % 60 })}
             </p>
           {/if}
         {:else if github.signinState.kind === "approved"}
           <div class="status status-ok">
             <CircleCheck size={20} />
-            <span>Signed in as @{github.status?.username ?? "github user"}.</span>
+            <span>{t("deviceflow.signedInAs", { username: github.status?.username ?? "github user" })}</span>
           </div>
         {:else if github.signinState.kind === "denied"}
           <div class="status status-bad">
             <CircleX size={20} />
-            <span>Sign-in denied.</span>
+            <span>{t("deviceflow.denied")}</span>
           </div>
         {:else if github.signinState.kind === "expired"}
           <div class="status status-bad">
             <TriangleAlert size={20} />
-            <span>Code expired. Please try again.</span>
+            <span>{t("deviceflow.expired")}</span>
           </div>
         {:else if github.signinState.kind === "error"}
           <div class="status status-bad">
@@ -190,8 +191,8 @@
       <footer>
         <button type="button" class="btn-secondary" onclick={onCancel}>
           {github.signinState.kind === "waiting" || github.signinState.kind === "starting"
-            ? "Cancel"
-            : "Close"}
+            ? t("deviceflow.cancel")
+            : t("deviceflow.close")}
         </button>
       </footer>
     </div>

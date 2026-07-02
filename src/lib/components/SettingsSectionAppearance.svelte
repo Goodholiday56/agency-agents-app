@@ -12,17 +12,18 @@
   import Monitor from "@lucide/svelte/icons/monitor";
 
   import { ui, VIBRANCY_MATERIALS, type VibrancyMaterial } from "$lib/stores/ui.svelte";
+  import { t } from "$lib/stores/i18n.svelte";
   import type { SidebarSection, ThemePreference } from "$lib/types";
 
   /** Sections the user can pick as their default landing page. Mirrors the
       sidebar nav order, plus Dashboard which lives in the brand button. */
-  const SECTIONS: { value: SidebarSection; label: string }[] = [
-    { value: "dashboard", label: "Dashboard" },
-    { value: "personas", label: "Agents" },
-    { value: "tools", label: "Tools" },
-    { value: "teams", label: "Teams" },
-    { value: "projects", label: "Projects" },
-    { value: "activity", label: "Activity" },
+  const SECTIONS: { value: SidebarSection; labelKey: string }[] = [
+    { value: "dashboard", labelKey: "nav.dashboard" },
+    { value: "personas",  labelKey: "nav.agents" },
+    { value: "tools",     labelKey: "nav.tools" },
+    { value: "teams",     labelKey: "nav.teams" },
+    { value: "projects",  labelKey: "nav.projects" },
+    { value: "activity",  labelKey: "nav.activity" },
   ];
 
   function onSectionChange(e: Event) {
@@ -37,11 +38,11 @@
 </script>
 
 <div class="section">
-  <h2>Appearance</h2>
+  <h2>{t("appearance.title")}</h2>
 
   <div class="field">
-    <label for="theme-group">Theme</label>
-    <div id="theme-group" class="radio-row" role="radiogroup" aria-label="Theme">
+    <label for="theme-group">{t("appearance.theme")}</label>
+    <div id="theme-group" class="radio-row" role="radiogroup" aria-label={t("appearance.theme")}>
       <button
         type="button"
         class="radio-btn"
@@ -50,7 +51,7 @@
         aria-checked={ui.theme === "light"}
         onclick={() => pickTheme("light")}
       >
-        <Sun size={14} /> Light
+        <Sun size={14} /> {t("common.light")}
       </button>
       <button
         type="button"
@@ -60,7 +61,7 @@
         aria-checked={ui.theme === "dark"}
         onclick={() => pickTheme("dark")}
       >
-        <Moon size={14} /> Dark
+        <Moon size={14} /> {t("common.dark")}
       </button>
       <button
         type="button"
@@ -70,14 +71,14 @@
         aria-checked={ui.theme === "system"}
         onclick={() => pickTheme("system")}
       >
-        <Monitor size={14} /> System
+        <Monitor size={14} /> {t("common.system")}
       </button>
     </div>
-    <p class="hint">Follows the macOS theme when set to System.</p>
+    <p class="hint">{t("appearance.themeHint")}</p>
   </div>
 
   <div class="field">
-    <label for="default-section">Default landing</label>
+    <label for="default-section">{t("appearance.defaultLanding")}</label>
     <select
       id="default-section"
       class="select"
@@ -85,14 +86,14 @@
       onchange={onSectionChange}
     >
       {#each SECTIONS as opt (opt.value)}
-        <option value={opt.value}>{opt.label}</option>
+        <option value={opt.value}>{t(opt.labelKey)}</option>
       {/each}
     </select>
-    <p class="hint">Which section opens when you launch Agency Agents.</p>
+    <p class="hint">{t("appearance.defaultLandingHint")}</p>
   </div>
 
   <div class="field">
-    <label for="vibrancy-material">Window vibrancy</label>
+    <label for="vibrancy-material">{t("appearance.vibrancy")}</label>
     <select
       id="vibrancy-material"
       class="select"
@@ -103,8 +104,7 @@
         <option value={m}>{m}</option>
       {/each}
     </select>
-    <p class="hint">Requires app restart to take effect. The default
-      (HudWindow) matches the rest of macOS.</p>
+    <p class="hint">{t("appearance.vibrancyHint")}</p>
   </div>
 
 </div>

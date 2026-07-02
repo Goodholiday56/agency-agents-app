@@ -7,6 +7,8 @@
    * at twelve o'clock. Built for the dashboard's Global-vs-Projects install split
    * (outer = per-tool for Global, per-project for Projects).
    */
+  import { t } from "$lib/stores/i18n.svelte";
+
   type Segment = { label: string; value: number; color: string; onClick?: () => void };
   type Group = Segment & { children: Segment[] };
 
@@ -62,11 +64,11 @@
             stroke-dasharray={`${a.len} ${a.circ - a.len}`} stroke-dashoffset={a.offset}
             class="seg" class:dim={hovered !== null && hovered !== a.seg.label} class:clickable={!!a.seg.onClick}
             role={a.seg.onClick ? "button" : "img"}
-            aria-label={`${a.seg.label}: ${a.seg.value}`}
+            aria-label={t("sunburst.segmentTitle", { label: a.seg.label, value: a.seg.value })}
             onmouseenter={() => (hovered = a.seg.label)}
             onmouseleave={() => (hovered = null)}
             onclick={a.seg.onClick}
-          ><title>{a.seg.label}: {a.seg.value}</title></circle>
+          ><title>{t("sunburst.segmentTitle", { label: a.seg.label, value: a.seg.value })}</title></circle>
         {/each}
         {#each innerArcs as a (a.seg.label)}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -77,9 +79,9 @@
             stroke-dasharray={`${a.len} ${a.circ - a.len}`} stroke-dashoffset={a.offset}
             class="seg" class:clickable={!!a.seg.onClick}
             role={a.seg.onClick ? "button" : "img"}
-            aria-label={`${a.seg.label}: ${a.seg.value}`}
+            aria-label={t("sunburst.segmentTitle", { label: a.seg.label, value: a.seg.value })}
             onclick={a.seg.onClick}
-          ><title>{a.seg.label}: {a.seg.value}</title></circle>
+          ><title>{t("sunburst.segmentTitle", { label: a.seg.label, value: a.seg.value })}</title></circle>
         {/each}
       </g>
     </svg>

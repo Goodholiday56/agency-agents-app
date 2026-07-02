@@ -34,6 +34,7 @@
   import { ui } from "$lib/stores/ui.svelte";
   import { toast } from "$lib/stores/toast.svelte";
   import { resolveCategoryIcon } from "$lib/util/categoryIcon";
+  import { t } from "$lib/stores/i18n.svelte";
   import type { InstalledAgent } from "$lib/types";
 
   onMount(() => {
@@ -146,7 +147,7 @@
         <h2 class="dh-label">{selected.label}</h2>
         <button class="dh-path" title={selected.path} onclick={() => reveal(selected.path)}>{selected.path}</button>
       </div>
-      <span class="dh-count">{selected.installedCount} agent{selected.installedCount === 1 ? "" : "s"}</span>
+      <span class="dh-count">{t("projects.countAgents", { n: selected.installedCount })}</span>
       <button class="btn" onclick={() => reveal(selected.path)}><FolderOpen size={15} /><span>Reveal</span></button>
       <button class="btn primary" onclick={() => (browseFor = selected.path)}>Deploy…</button>
       <button class="btn danger-ic" title="Remove from list" aria-label="Remove project from list" onclick={() => removeFromList(selected.path)}><Trash2 size={15} /></button>

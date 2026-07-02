@@ -13,6 +13,7 @@
    * colors are derived (golden-angle hue spacing) since divisions carry no color
    * in the catalog metadata — stable per division, auto-covers new ones.
    */
+  import { t } from "$lib/stores/i18n.svelte";
   import EmptyState from "./EmptyState.svelte";
   import LayersIcon from "@lucide/svelte/icons/layers";
   import { corpus } from "$lib/stores/corpus.svelte";
@@ -83,7 +84,7 @@
 </script>
 
 {#if donuts.length === 0}
-  <EmptyState title="No coverage yet" body="Install agents across your tools to see the per-tool division mix here.">
+  <EmptyState title={t("health.noCoverageYet")} body={t("health.noCoverageBody")}>
     {#snippet icon()}<LayersIcon size={40} />{/snippet}
   </EmptyState>
 {:else}
@@ -94,7 +95,7 @@
         {@const hot = hovered ? countIn(d.tool, hovered) : 0}
         <div class="cd-cell">
           <div class="cd-chart">
-            <svg width="132" height="132" viewBox="0 0 120 120" role="img" aria-label={`${d.label}: ${d.total} agents across ${d.segs.length} divisions`}>
+            <svg width="132" height="132" viewBox="0 0 120 120" role="img" aria-label={t("coverage.agentsAcross", { label: d.label, total: d.total, n: d.segs.length })}>
               <g transform="rotate(-90 60 60)">
                 <circle cx="60" cy="60" r={R} fill="none" style="stroke: var(--color-surface-sunken)" stroke-width={STROKE} />
                 {#each arcs as a (a.slug)}
@@ -110,19 +111,19 @@
                     class="seg"
                     class:dim={hovered !== null && hovered !== a.slug}
                     role="img"
-                    aria-label={`${a.label}: ${a.value} in ${d.label}`}
+                    aria-label={t("coverage.inTool", { label: a.label, value: a.value, tool: d.label })}
                     onmouseenter={() => (hovered = a.slug)}
                     onmouseleave={() => (hovered = null)}
                     onclick={() => ui.openDivision(a.slug)}
-                  ><title>{a.label}: {a.value} in {d.label}</title></circle>
+                  ><title>{t("coverage.inTool", { label: a.label, value: a.value, tool: d.label })}</title></circle>
                 {/each}
               </g>
             </svg>
             <button
               class="cd-badge"
               style="--accent:{toolAccent(d.tool)}"
-              title={`Open ${d.label} in Tools`}
-              aria-label={`Open ${d.label} in Tools`}
+              title={t("health.openInTools", { label: d.label })}
+              aria-label={t("health.openInTools", { label: d.label })}
               onclick={() => ui.openTools(d.tool)}
             >{#if toolIcon(d.tool)}<span class="glyph">{@html toolIcon(d.tool)}</span>{:else}{toolMark(d.label)}{/if}</button>
           </div>

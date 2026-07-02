@@ -20,6 +20,7 @@
   import { onMount } from "svelte";
   import X from "@lucide/svelte/icons/x";
   import Paintbrush from "@lucide/svelte/icons/paintbrush";
+  import LanguagesIcon from "@lucide/svelte/icons/languages";
   import Library from "@lucide/svelte/icons/library";
   import Globe from "@lucide/svelte/icons/globe";
   import Github from "@lucide/svelte/icons/git-fork";
@@ -27,7 +28,9 @@
   import Info from "@lucide/svelte/icons/info";
 
   import { ui } from "$lib/stores/ui.svelte";
+  import { t } from "$lib/stores/i18n.svelte";
   import SettingsSectionAppearance from "./SettingsSectionAppearance.svelte";
+  import SettingsSectionLanguage from "./SettingsSectionLanguage.svelte";
   import SettingsSectionCatalog from "./SettingsSectionCatalog.svelte";
   import SettingsSectionNetwork from "./SettingsSectionNetwork.svelte";
   import SettingsSectionGitHub from "./SettingsSectionGitHub.svelte";
@@ -37,17 +40,19 @@
 
   interface NavEntry {
     id: SettingsSection;
-    label: string;
+    /** Translation key for the nav-rail label. */
+    labelKey: string;
     icon: typeof Paintbrush;
   }
 
   const NAV: NavEntry[] = [
-    { id: "appearance", label: "Appearance", icon: Paintbrush },
-    { id: "catalog",    label: "Catalog",    icon: Library },
-    { id: "network",    label: "Network",    icon: Globe },
-    { id: "github",     label: "GitHub",     icon: Github },
-    { id: "activity",   label: "Activity",   icon: Activity },
-    { id: "about",      label: "About",      icon: Info },
+    { id: "appearance", labelKey: "settings.appearance", icon: Paintbrush },
+    { id: "language",   labelKey: "settings.language",   icon: LanguagesIcon },
+    { id: "catalog",    labelKey: "settings.catalog",    icon: Library },
+    { id: "network",    labelKey: "settings.network",    icon: Globe },
+    { id: "github",     labelKey: "settings.github",     icon: Github },
+    { id: "activity",   labelKey: "settings.activityTab",icon: Activity },
+    { id: "about",      labelKey: "settings.about",      icon: Info },
   ];
 
   let activeSection: SettingsSection = $state("appearance");
@@ -109,15 +114,15 @@
     class="settings-wrap"
     role="dialog"
     aria-modal="true"
-    aria-label="Settings"
+    aria-label={t("settings.title")}
   >
     <div
       class="settings"
       bind:this={modalEl}
       data-tauri-drag-region="false"
     >
-      <div class="nav" role="tablist" aria-label="Settings sections">
-        <h1 class="nav-title">Settings</h1>
+      <div class="nav" role="tablist" aria-label={t("settings.title")}>
+        <h1 class="nav-title">{t("settings.title")}</h1>
         <ul>
           {#each NAV as entry (entry.id)}
             {@const isActive = activeSection === entry.id}
@@ -132,7 +137,7 @@
                 onclick={() => (activeSection = entry.id)}
               >
                 <span class="nav-icon" aria-hidden="true"><entry.icon size={14} /></span>
-                <span>{entry.label}</span>
+                <span>{t(entry.labelKey)}</span>
               </button>
             </li>
           {/each}
@@ -143,18 +148,20 @@
         class="pane"
         id="settings-pane"
         role="tabpanel"
-        aria-label={`Settings — ${activeSection}`}
+        aria-label={t("settings.title") + " — " + t(NAV.find((n) => n.id === activeSection)?.labelKey ?? "")}
       >
         <button
           type="button"
           class="close"
-          aria-label="Close Settings"
+          aria-label={t("common.close")}
           onclick={() => ui.closeSettings()}
         >
           <X size={16} />
         </button>
         {#if activeSection === "appearance"}
           <SettingsSectionAppearance />
+        {:else if activeSection === "language"}
+          <SettingsSectionLanguage />
         {:else if activeSection === "catalog"}
           <SettingsSectionCatalog />
         {:else if activeSection === "network"}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import Search from "@lucide/svelte/icons/search";
+  import { t } from "$lib/stores/i18n.svelte";
 
   import { ui } from "$lib/stores/ui.svelte";
   import { shortcut } from "$lib/util/platform";
@@ -20,14 +21,14 @@
   });
 
   const commands: PaletteItem[] = [
-    { kind: "command", id: "dashboard", label: "Open Dashboard", shortcut: shortcut("0"), section: "Nav", run: () => ui.setSection("dashboard") },
-    { kind: "command", id: "personas",  label: "Open Agents",    shortcut: shortcut("1"), section: "Nav", run: () => ui.openAgents() },
-    { kind: "command", id: "tools",     label: "Open Tools",     shortcut: shortcut("2"), section: "Nav", run: () => ui.setSection("tools") },
-    { kind: "command", id: "teams",     label: "Open Teams",     shortcut: shortcut("3"), section: "Nav", run: () => ui.setSection("teams") },
-    { kind: "command", id: "projects",  label: "Open Projects",  shortcut: shortcut("4"), section: "Nav", run: () => ui.setSection("projects") },
-    { kind: "command", id: "activity",  label: "Open Activity",  shortcut: shortcut("5"), section: "Nav", run: () => ui.setSection("activity") },
-    { kind: "command", id: "drawer",    label: "Toggle Activity drawer", shortcut: shortcut("L"), section: "View", run: () => ui.toggleDrawer() },
-    { kind: "command", id: "playbook",  label: "Open the Playbook", section: "Help", run: () => ui.openPlaybook() },
+    { kind: "command", id: "dashboard", label: t("palette.openDashboard"), shortcut: shortcut("0"), section: t("palette.nav"), run: () => ui.setSection("dashboard") },
+    { kind: "command", id: "personas",  label: t("palette.openAgents"),    shortcut: shortcut("1"), section: t("palette.nav"), run: () => ui.openAgents() },
+    { kind: "command", id: "tools",     label: t("palette.openTools"),     shortcut: shortcut("2"), section: t("palette.nav"), run: () => ui.setSection("tools") },
+    { kind: "command", id: "teams",     label: t("palette.openTeams"),     shortcut: shortcut("3"), section: t("palette.nav"), run: () => ui.setSection("teams") },
+    { kind: "command", id: "projects",  label: t("palette.openProjects"),  shortcut: shortcut("4"), section: t("palette.nav"), run: () => ui.setSection("projects") },
+    { kind: "command", id: "activity",  label: t("palette.openActivity"),  shortcut: shortcut("5"), section: t("palette.nav"), run: () => ui.setSection("activity") },
+    { kind: "command", id: "drawer",    label: t("palette.toggleDrawer"), shortcut: shortcut("L"), section: t("palette.view"), run: () => ui.toggleDrawer() },
+    { kind: "command", id: "playbook",  label: t("palette.openPlaybook"), section: t("palette.help"), run: () => ui.openPlaybook() },
   ];
 
   let commandHits = $derived.by(() => {
@@ -42,7 +43,7 @@
     let idx = 0;
     if (commandHits.length > 0) {
       out.push({
-        label: "Commands",
+        label: t("palette.commands"),
         items: commandHits.map((c) => ({ item: c, idx: idx++ })),
       });
     }
@@ -80,16 +81,16 @@
 
 {#if ui.paletteOpen}
   <div class="scrim" role="presentation" onclick={() => ui.closePalette()}></div>
-  <div class="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+  <div class="palette" role="dialog" aria-modal="true" aria-label={t("palette.dialogAria")}>
     <div class="search">
       <Search size={16} />
       <input
         bind:this={inputEl}
         type="text"
-        placeholder="Type a command, package, or section."
+        placeholder={t("palette.placeholder")}
         bind:value={query}
         onkeydown={onKey}
-        aria-label="Command palette search"
+        aria-label={t("palette.searchAria")}
         role="combobox"
         aria-controls="palette-listbox"
         aria-expanded={totalItems > 0}
@@ -101,9 +102,9 @@
 
     <div class="results">
       {#if totalItems === 0}
-        <p class="empty">No results.</p>
+        <p class="empty">{t("palette.noResults")}</p>
       {:else}
-        <div id="palette-listbox" role="listbox" aria-label="Command palette results">
+        <div id="palette-listbox" role="listbox" aria-label={t("palette.resultsAria")}>
           {#each groups as g (g.label)}
             <div class="group" role="group" aria-label={g.label}>
               <div class="group-label" aria-hidden="true">{g.label}</div>
@@ -129,9 +130,9 @@
     </div>
 
     <footer class="foot">
-      <span class="kbd">↑↓</span> navigate
-      <span class="kbd">⏎</span> open
-      <span class="kbd">Esc</span> close
+      <span class="kbd">↑↓</span> {t("palette.navigate")}
+      <span class="kbd">⏎</span> {t("palette.open")}
+      <span class="kbd">Esc</span> {t("palette.close")}
     </footer>
   </div>
 {/if}

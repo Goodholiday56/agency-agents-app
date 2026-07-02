@@ -43,6 +43,7 @@ const CONFIRM_DESTRUCTIVE_KEY = "agency-agents:confirm-destructive";
 const ACTIVITY_MAX_JOBS_KEY = "agency-agents:activity:max-jobs";
 const ACTIVITY_MAX_LINES_KEY = "agency-agents:activity:max-lines";
 const SIDEBAR_COLLAPSED_KEY = "agency-agents:sidebar-collapsed";
+const LANGUAGE_KEY = "agency-agents:language";
 
 /** Defaults for the Activity-retention settings (Phase 12b). */
 export const ACTIVITY_MAX_JOBS_DEFAULT = 50;
@@ -193,6 +194,11 @@ class UiStore {
   /** Sidebar width in px (when expanded); persisted to localStorage so a
       resized sidebar survives app launches. */
   sidebarWidth: number = $state(SIDEBAR_DEFAULT_WIDTH);
+
+  /** UI language preference (BCP 47 tag, e.g. "en", "zh-CN", "ja").
+      Persisted to localStorage. The app ships English-only; this sets
+      the <html lang> attribute and prepares for future i18n. */
+  language: string = $state("en");
 
   setSection(s: SidebarSection) {
     this.section = s;
@@ -529,6 +535,27 @@ class UiStore {
   resetSidebarWidth() {
     this.setSidebarWidth(SIDEBAR_DEFAULT_WIDTH);
   }
+
+  /** Persist a new language preference. Writes to localStorage and
+      applies the <html lang> attribute immediately so date/number
+      formatting reflects the user's choice. */
+  setLanguage(lang: string) {
+    this.language = lang;
+    try { localStorage.setItem(LANGUAGE_KEY, lang); } catch { /* ignore */ }
+    applyLanguage(lang);
+  }
+
+  /** Restore the saved language on app start. Called once from
+      +layout.svelte after the DOM is available. */
+  loadLanguageFromStorage() {
+    try {
+      const v = localStorage.getItem(LANGUAGE_KEY);
+      if (v !== null) {
+        this.language = v;
+      }
+    } catch { /* ignore */ }
+    applyLanguage(this.language);
+  }
 }
 
 function applyTheme(t: ThemePreference) {
@@ -554,6 +581,12 @@ export function watchSystemTheme(getCurrent: () => ThemePreference) {
   };
   mq.addEventListener("change", handler);
   return () => mq.removeEventListener("change", handler);
+}
+
+/** Set the <html lang> attribute to the user's chosen BCP 47 tag. */
+function applyLanguage(lang: string) {
+  if (typeof document === "undefined") return;
+  document.documentElement.lang = lang;
 }
 
 export const ui = new UiStore();

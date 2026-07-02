@@ -9,14 +9,12 @@
   import StarterPrompt from "./StarterPrompt.svelte";
   import { ui } from "$lib/stores/ui.svelte";
   import { PLAYBOOK_PRACTICES, STARTER_PROMPTS } from "$lib/data/playbook";
+  import { t } from "$lib/stores/i18n.svelte";
 </script>
 
-<Modal open={ui.playbookOpen} title="The Playbook" size="wide" onClose={() => ui.closePlaybook()}>
+<Modal open={ui.playbookOpen} title={t("playbook.title")} size="wide" onClose={() => ui.closePlaybook()}>
   <div class="pb">
-    <p class="intro">
-      Agents pay off when you <strong>direct them like a team</strong>. Name the outcome,
-      cast the right squad, and loop until it's proven. Here's the short version.
-    </p>
+    <p class="intro">{t("playbook.intro")}</p>
 
     <ol class="practices">
       {#each PLAYBOOK_PRACTICES as p, i (p.title)}
@@ -30,8 +28,8 @@
       {/each}
     </ol>
 
-    <h2 class="sec">Starter prompts</h2>
-    <p class="sec-sub">Copy one, swap the <code>[brackets]</code>, and paste it into your tool.</p>
+    <h2 class="sec">{t("playbook.starterPrompts")}</h2>
+    <p class="sec-sub">{t("playbook.starterSubtitle")}</p>
     <div class="starters">
       {#each STARTER_PROMPTS as s (s.id)}
         <StarterPrompt label={s.label} description={s.description} template={s.template} />
@@ -40,7 +38,7 @@
   </div>
 
   {#snippet actions()}
-    <Button variant="primary" onclick={() => ui.closePlaybook()}>Got it</Button>
+    <Button variant="primary" onclick={() => ui.closePlaybook()}>{t("playbook.gotIt")}</Button>
   {/snippet}
 </Modal>
 

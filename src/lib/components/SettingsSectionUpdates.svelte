@@ -40,6 +40,7 @@
   import { settings } from "$lib/stores/settings.svelte";
   import { updater } from "$lib/stores/updater.svelte";
   import { safeOpenUrl } from "$lib/util/url";
+  import { t } from "$lib/stores/i18n.svelte";
 
   /** Offline Mode gates both the manual button and the Install action.
       Tracked as a single derived for tidy template gating. */
@@ -93,40 +94,33 @@
 </script>
 
 <div class="section">
-  <h2>Updates</h2>
+  <h2>{t("updates.title")}</h2>
 
   <!-- Row 1: Check for updates now -->
   <div class="field">
-    <span class="field-label">Check for updates now</span>
+    <span class="field-label">{t("updates.checkNow")}</span>
     <div class="row">
       <button
         type="button"
         class="btn-secondary"
         onclick={onCheckNow}
         disabled={offline || updater.checking}
-        title={offline ? "Disabled by Offline Mode" : "Check the manifest for a newer release"}
+        title={offline ? t("updates.disabledOffline") : t("updates.checkHint")}
       >
         {#if updater.checking}
           <span class="spin"><Loader size={14} /></span>
-          Checking…
+          {t("updates.checking")}
         {:else}
           <RefreshCw size={14} />
-          Check now
+          {t("updates.checkBtn")}
         {/if}
       </button>
-      <span class="meta">Last checked: {lastCheckedLabel}</span>
+      <span class="meta">{t("updates.lastChecked", { date: lastCheckedLabel })}</span>
     </div>
     {#if offline}
-      <p class="hint">
-        Offline Mode is on — manual update checks are blocked. Turn it off above
-        to check the manifest.
-      </p>
+      <p class="hint">{t("updates.offlineBlocked")}</p>
     {:else}
-      <p class="hint">
-        Fetches <code>agencyagents.app/updater.json</code> and
-        compares the published version to the one you're running. No
-        version number is sent.
-      </p>
+      <p class="hint">{t("updates.checkHint")}</p>
     {/if}
   </div>
 
@@ -140,13 +134,9 @@
         disabled={settings.loading || settings.corruptOnDisk}
       />
       <span class="toggle-track" aria-hidden="true"></span>
-      <span class="toggle-label">Auto-check daily</span>
+      <span class="toggle-label">{t("updates.autoCheckDaily")}</span>
     </label>
-    <p class="hint">
-      When on, Agency Agents checks the manifest once every 24 hours and
-      surfaces a notice in the title bar if a newer version is available.
-      Suspended automatically while Offline Mode is on.
-    </p>
+    <p class="hint">{t("updates.autoCheckHint")}</p>
   </div>
 
   <!-- Row 2b: Install updates automatically — present but disabled.
@@ -162,56 +152,52 @@
         aria-describedby="auto-install-hint"
       />
       <span class="toggle-track" aria-hidden="true"></span>
-      <span class="toggle-label">Install updates automatically</span>
+      <span class="toggle-label">{t("updates.autoInstall")}</span>
     </label>
-    <p class="hint" id="auto-install-hint">
-      Available once the update channel is live. When enabled, approved updates
-      will download, verify, and install in the background — you'll only be
-      prompted to relaunch.
-    </p>
+    <p class="hint" id="auto-install-hint">{t("updates.autoInstallHint")}</p>
   </div>
 
   <!-- Row 3: Update channel -->
   <div class="field">
-    <span class="field-label">Update channel</span>
+    <span class="field-label">{t("updates.channel")}</span>
     <div class="channel-row">
-      <span class="channel-name">Stable</span>
-      <span class="meta">No beta channel in this release.</span>
+      <span class="channel-name">{t("updates.stable")}</span>
+      <span class="meta">{t("updates.noBeta")}</span>
     </div>
   </div>
 
   <!-- Conditional: notice card when an update is available -->
   {#if info}
-    <div class="notice" role="region" aria-label={`Update available: Agency Agents ${info.version}`}>
+    <div class="notice" role="region" aria-label={t("updates.available", { version: info.version })}>
       <div class="notice-head">
-        <strong>v{info.version} available</strong>
+        <strong>{t("updates.versionAvailable", { version: info.version })}</strong>
         <button
           type="button"
           class="link"
           onclick={onOpenReleaseNotes}
-          aria-label="Open release notes in your browser"
+          aria-label={t("updates.openReleaseNotes")}
         >
-          Release notes <ExternalLink size={12} />
+          {t("updates.releaseNotes")} <ExternalLink size={12} />
         </button>
       </div>
 
       {#if updater.installComplete}
         <div class="result success">
           <CheckCircle size={16} />
-          <span>Install complete. Relaunch to use the new version.</span>
+          <span>{t("updates.installComplete")}</span>
         </div>
         <button
           type="button"
           class="btn-primary"
           onclick={onRelaunch}
-          title="Relaunch into the freshly-installed Agency Agents"
+          title={t("updates.relaunchNow")}
         >
-          <RotateCw size={14} /> Relaunch now
+          <RotateCw size={14} /> {t("updates.relaunchNow")}
         </button>
       {:else if updater.installing}
         <div class="progress" role="status" aria-live="polite">
           <span class="spin"><Loader size={16} /></span>
-          <span>Downloading and verifying Agency Agents v{info.version}…</span>
+          <span>{t("updates.installing", { version: info.version })}</span>
         </div>
       {:else if updater.error}
         <div class="result error">
@@ -223,9 +209,9 @@
           class="btn-secondary"
           onclick={onTryAgain}
           disabled={offline}
-          title={offline ? "Disabled by Offline Mode" : "Retry the install"}
+          title={offline ? t("updates.disabledOffline") : t("updates.retryInstall")}
         >
-          <RotateCw size={14} /> Try again
+          <RotateCw size={14} /> {t("updates.tryAgain")}
         </button>
       {:else}
         <button
@@ -233,9 +219,9 @@
           class="btn-primary"
           onclick={onInstall}
           disabled={offline}
-          title={offline ? "Disabled by Offline Mode" : `Download and install Agency Agents v${info.version}`}
+          title={offline ? t("updates.disabledOffline") : t("updates.downloadInstall", { version: info.version })}
         >
-          <Download size={14} /> Install update
+          <Download size={14} /> {t("updates.installUpdate")}
         </button>
       {/if}
 
